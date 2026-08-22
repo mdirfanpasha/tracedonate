@@ -1,33 +1,36 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Campaign } from "@/lib/types";
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI, MONAD_EXPLORER_URL } from "@/config/contracts";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { parseEther } from "viem";
+import { recordLocalDonation } from "@/hooks/useTraceDonateContract";
 import {
   X,
+  Heart,
+  Loader2,
   CheckCircle2,
   ExternalLink,
   ShieldCheck,
   Receipt,
-  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 interface DonationModalProps {
+  campaign: Campaign;
   isOpen: boolean;
   onClose: () => void;
-  campaign: Campaign;
   onSuccess: (txHash: string, amount: string) => void;
 }
 
 export function DonationModal({
+  campaign,
   isOpen,
   onClose,
-  campaign,
   onSuccess,
 }: DonationModalProps) {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const [amount, setAmount] = useState<string>("0.1");
 
   const quickAmounts = ["0.01", "0.05", "0.1", "0.5", "1"];
@@ -45,6 +48,13 @@ export function DonationModal({
     isSuccess: isConfirmed,
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
+
+  // When donation confirms on-chain, automatically update campaign balance and records in real time
+  useEffect(() => {
+    if (isConfirmed && hash) {
+      recordLocalDonation(campaign.id, amount, address, hash);
+    }
+  }, [isConfirmed, hash, campaign.id, amount, address]);
 
   if (!isOpen) return null;
 
@@ -138,8 +148,9 @@ export function DonationModal({
             </button>
 
             {writeError && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
-                Your donation could not be completed. Your wallet may have rejected the transaction or you may need testnet MON.
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>Transaction cancelled or failed. Please check your Monad Testnet balance.</span>
               </div>
             )}
           </div>

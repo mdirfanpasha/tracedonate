@@ -1,21 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { Expense } from "@/lib/types";
-import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
+import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI, MONAD_EXPLORER_URL } from "@/config/contracts";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { formatAddress, formatDateTime } from "@/lib/utils";
 import { getEvidenceForExpense, OffChainEvidence } from "@/lib/supabase";
+import { updateLocalExpenseStatus } from "@/hooks/useTraceDonateContract";
 import { TransactionBadge } from "./TransactionBadge";
+import { formatAddress } from "@/lib/utils";
 import {
   X,
   ShieldCheck,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
   ExternalLink,
-  Receipt,
+  Loader2,
+  CheckCircle2,
   FileText,
+  AlertTriangle,
+  Receipt,
   Camera,
 } from "lucide-react";
 
@@ -45,7 +46,16 @@ export function VerifyExpenseModal({
   const {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
-  } = useWaitForTransactionReceipt({ hash });
+  } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  // When payment is confirmed on-chain, automatically update the expense status in real time
+  useEffect(() => {
+    if (isConfirmed && expense) {
+      updateLocalExpenseStatus(expense.campaignId, expense.id, "Executed", hash);
+    }
+  }, [isConfirmed, expense, hash]);
 
   if (!isOpen || !expense) return null;
 
@@ -165,45 +175,54 @@ export function VerifyExpenseModal({
                   </div>
                 </div>
               ) : (
-                <div className="p-4 rounded-lg bg-white border border-slate-200 text-center text-slate-500">
-                  Receipt attached via on-chain hash
+                <div className="p-3 rounded bg-white border border-slate-200 text-center text-slate-400">
+                  No visual receipt attached
                 </div>
               )}
             </div>
 
-            {/* Spending Details */}
-            <div className="space-y-1 p-3 rounded-xl bg-white border border-slate-200">
-              <span className="text-slate-500 font-medium block">Spending Description:</span>
-              <p className="text-slate-800">{expense.description}</p>
+            {/* Description & Invoice Hash */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+              <span className="text-slate-500 font-medium">Spending Purpose:</span>
+              <p className="text-slate-900 font-medium">{expense.description}</p>
             </div>
 
-            {/* Evidence Proof Hash */}
-            <div className="space-y-1 p-3 rounded-xl bg-white border border-slate-200 font-mono text-[11px]">
-              <span className="text-slate-500 block">Evidence Hash:</span>
-              <div className="text-slate-700 truncate">{expense.evidenceHash || "ipfs://bafybeicb...invoice.pdf"}</div>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1 font-mono text-[11px]">
+              <span className="text-slate-500 block">EVIDENCE HASH (IPFS/STORAGE):</span>
+              <div className="text-slate-700 truncate">{expense.evidenceHash}</div>
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-2">
+            <div className="pt-2 flex gap-3">
               <button
+                type="button"
+                onClick={handleModalClose}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
                 onClick={handleApproveAndExecute}
                 disabled={isWritePending || isConfirming}
-                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all disabled:opacity-50 shadow-md shadow-emerald-600/10 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
               >
-                {(isWritePending || isConfirming) && <Loader2 className="w-4 h-4 animate-spin" />}
+                {(isWritePending || isConfirming) && (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                )}
                 <span>
                   {isWritePending
-                    ? "Confirm in Wallet..."
+                    ? "Sign in Wallet..."
                     : isConfirming
-                    ? "Executing Transfer on Monad..."
-                    : "Authorize & Execute Direct Payout"}
+                    ? "Executing on Monad..."
+                    : "Approve & Execute Payout"}
                 </span>
               </button>
             </div>
 
             {writeError && (
               <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
-                Only authorized verifier addresses can release contract payments.
+                Could not execute payout on Monad. Ensure you are connected with an authorized verifier or owner account.
               </div>
             )}
           </div>

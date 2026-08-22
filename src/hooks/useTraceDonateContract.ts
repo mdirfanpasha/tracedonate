@@ -2,13 +2,15 @@
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI, SEED_CAMPAIGNS } from "@/config/contracts";
-import { Campaign, Expense, Donation } from "@/lib/types";
+import { Campaign, Expense, Donation, ExpenseStatus } from "@/lib/types";
 import { formatMon } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
-import { syncCampaignToSupabase, fetchSupabaseCampaigns } from "@/lib/supabase";
+import { syncCampaignToSupabase, fetchSupabaseCampaigns, supabase } from "@/lib/supabase";
+import { parseEther } from "viem";
 
 const LOCAL_CAMPAIGNS_KEY = "tracedonate_local_campaigns";
 const LOCAL_EXPENSES_KEY = "tracedonate_local_expenses";
+const LOCAL_DONATIONS_KEY = "tracedonate_local_donations";
 
 export function getLocalCampaigns(): Campaign[] {
   if (typeof window === "undefined") return [];
@@ -30,6 +32,79 @@ export function saveLocalCampaign(campaign: Campaign) {
     syncCampaignToSupabase(campaign);
   } catch (e) {
     console.warn("Failed to save local campaign:", e);
+  }
+}
+
+export function recordLocalDonation(
+  campaignId: number,
+  amount: string,
+  donorAddress?: string,
+  txHash?: string
+) {
+  if (typeof window === "undefined") return;
+  try {
+    // 1. Update local campaign balance
+    const existingCampaigns = getLocalCampaigns();
+    const target = existingCampaigns.find((c) => c.id === campaignId);
+    if (target) {
+      const added = parseFloat(amount) || 0;
+      const newRaised = (parseFloat(target.totalRaised) + added).toFixed(3);
+      const newBalance = (parseFloat(target.currentBalance) + added).toFixed(3);
+      const updatedCampaign: Campaign = {
+        ...target,
+        totalRaised: newRaised,
+        currentBalance: newBalance,
+        totalRaisedWei: parseEther(newRaised),
+        currentBalanceWei: parseEther(newBalance),
+      };
+      saveLocalCampaign(updatedCampaign);
+    }
+
+    // 2. Record in local donations list
+    const rawDonations = localStorage.getItem(LOCAL_DONATIONS_KEY);
+    const donations: Donation[] = rawDonations ? JSON.parse(rawDonations) : [];
+    donations.unshift({
+      campaignId,
+      donor: (donorAddress || "0x2f2ca4e7CE1443aE7792675d5a7Fff4b2660fb0D") as `0x${string}`,
+      amount,
+      amountWei: parseEther(amount),
+      timestamp: Math.floor(Date.now() / 1000),
+      txHash,
+    });
+    localStorage.setItem(LOCAL_DONATIONS_KEY, JSON.stringify(donations));
+    window.dispatchEvent(new Event("tracedonate_update"));
+  } catch (e) {
+    console.warn("Failed to record local donation:", e);
+  }
+}
+
+export function updateLocalExpenseStatus(
+  campaignId: number,
+  expenseId: number,
+  newStatus: ExpenseStatus,
+  txHash?: string
+) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(LOCAL_EXPENSES_KEY);
+    if (!raw) return;
+    const all: Record<number, Expense[]> = JSON.parse(raw);
+    if (all[campaignId]) {
+      all[campaignId] = all[campaignId].map((e) =>
+        e.id === expenseId
+          ? {
+              ...e,
+              status: newStatus,
+              executedAt: newStatus === "Executed" ? Math.floor(Date.now() / 1000) : e.executedAt,
+              txHash: txHash || e.txHash,
+            }
+          : e
+      );
+      localStorage.setItem(LOCAL_EXPENSES_KEY, JSON.stringify(all));
+      window.dispatchEvent(new Event("tracedonate_update"));
+    }
+  } catch (e) {
+    console.warn("Failed to update expense status:", e);
   }
 }
 
@@ -63,6 +138,9 @@ export function useAllCampaigns() {
     address: TRACEDONATE_CONTRACT_ADDRESS,
     abi: TRACEDONATE_ABI,
     functionName: "getAllCampaigns",
+    query: {
+      refetchInterval: 3000, // 3-second real-time polling from Monad Testnet
+    },
   });
 
   const [localCampaigns, setLocalCampaigns] = useState<Campaign[]>([]);
@@ -84,11 +162,38 @@ export function useAllCampaigns() {
   useEffect(() => {
     loadLocal();
     loadSupabase();
+
+    // Event & storage listeners
     window.addEventListener("tracedonate_update", loadLocal);
     window.addEventListener("storage", loadLocal);
+
+    // Continuous 3-second heartbeat for real-time background sync
+    const interval = setInterval(() => {
+      loadLocal();
+      loadSupabase();
+    }, 3000);
+
+    // Supabase Realtime channel subscription
+    let channel: any = null;
+    if (supabase) {
+      try {
+        channel = supabase
+          .channel("realtime-campaigns")
+          .on("postgres_changes", { event: "*", schema: "public", table: "campaigns" }, () => {
+            loadSupabase();
+            window.dispatchEvent(new Event("tracedonate_update"));
+          })
+          .subscribe();
+      } catch {}
+    }
+
     return () => {
       window.removeEventListener("tracedonate_update", loadLocal);
       window.removeEventListener("storage", loadLocal);
+      clearInterval(interval);
+      if (channel && supabase) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [loadLocal, loadSupabase]);
 
@@ -110,6 +215,13 @@ export function useAllCampaigns() {
       const id = Number(c.id);
       if (id > 0) {
         const existing = allMap.get(id);
+        const localExps = getLocalExpenses(id);
+        const seedExps = existing?.expenses || [];
+        const combinedExps = [
+          ...localExps,
+          ...seedExps.filter((se) => !localExps.some((le) => le.id === se.id)),
+        ];
+
         allMap.set(id, {
           id,
           organization: c.organization,
@@ -127,7 +239,7 @@ export function useAllCampaigns() {
           imageUri: c.imageUri || existing?.imageUri || "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80",
           active: Boolean(c.active),
           createdAt: Number(c.createdAt),
-          expenses: existing?.expenses || [],
+          expenses: combinedExps,
         });
       }
     });
@@ -155,6 +267,9 @@ export function useCampaignDetails(campaignId: number) {
     abi: TRACEDONATE_ABI,
     functionName: "getCampaign",
     args: [BigInt(campaignId)],
+    query: {
+      refetchInterval: 3000,
+    },
   });
 
   const { data: expensesRaw, isLoading: isExpensesLoading, refetch: refetchExpenses } = useReadContract({
@@ -162,6 +277,9 @@ export function useCampaignDetails(campaignId: number) {
     abi: TRACEDONATE_ABI,
     functionName: "getCampaignExpenses",
     args: [BigInt(campaignId)],
+    query: {
+      refetchInterval: 3000,
+    },
   });
 
   const [localExpenses, setLocalExpenses] = useState<Expense[]>([]);
@@ -174,9 +292,11 @@ export function useCampaignDetails(campaignId: number) {
     loadLocalExpenses();
     window.addEventListener("tracedonate_update", loadLocalExpenses);
     window.addEventListener("storage", loadLocalExpenses);
+    const interval = setInterval(loadLocalExpenses, 3000);
     return () => {
       window.removeEventListener("tracedonate_update", loadLocalExpenses);
       window.removeEventListener("storage", loadLocalExpenses);
+      clearInterval(interval);
     };
   }, [loadLocalExpenses]);
 
@@ -248,9 +368,34 @@ export function useDonorHistory(donorAddress?: string) {
     abi: TRACEDONATE_ABI,
     functionName: "getDonorDonations",
     args: donorAddress ? [donorAddress as `0x${string}`] : undefined,
+    query: {
+      refetchInterval: 3000,
+    },
   });
 
-  const donations: Donation[] = Array.isArray(donationsRaw)
+  const [localDonations, setLocalDonations] = useState<Donation[]>([]);
+
+  const loadLocalDonations = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(LOCAL_DONATIONS_KEY);
+      if (raw) setLocalDonations(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    loadLocalDonations();
+    window.addEventListener("tracedonate_update", loadLocalDonations);
+    window.addEventListener("storage", loadLocalDonations);
+    const interval = setInterval(loadLocalDonations, 3000);
+    return () => {
+      window.removeEventListener("tracedonate_update", loadLocalDonations);
+      window.removeEventListener("storage", loadLocalDonations);
+      clearInterval(interval);
+    };
+  }, [loadLocalDonations]);
+
+  const onChainDonations: Donation[] = Array.isArray(donationsRaw)
     ? donationsRaw.map((d: any) => ({
         campaignId: Number(d.campaignId),
         donor: d.donor,
@@ -260,8 +405,10 @@ export function useDonorHistory(donorAddress?: string) {
       }))
     : [];
 
+  const mergedDonations = [...localDonations, ...onChainDonations];
+
   return {
-    donations,
+    donations: mergedDonations,
     isLoading,
     refetch,
   };
@@ -272,6 +419,9 @@ export function useGlobalStats() {
     address: TRACEDONATE_CONTRACT_ADDRESS,
     abi: TRACEDONATE_ABI,
     functionName: "getGlobalStats",
+    query: {
+      refetchInterval: 3000,
+    },
   });
 
   const stats = data
