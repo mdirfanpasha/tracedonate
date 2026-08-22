@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { TRACEDONATE_CONTRACT_ADDRESS, MONAD_EXPLORER_URL } from "@/config/contracts";
-import { ShieldCheck, ExternalLink } from "lucide-react";
+import { ShieldCheck, ExternalLink, Github } from "lucide-react";
 import { formatAddress } from "@/lib/utils";
 
 export function Footer() {
@@ -18,13 +18,25 @@ export function Footer() {
           <span className="text-xs text-slate-500">• Built on Monad</span>
         </div>
 
-        <div className="flex items-center gap-6 text-xs text-slate-600">
+        <div className="flex flex-wrap items-center gap-6 text-xs text-slate-600">
           <Link href="/campaigns" className="hover:text-slate-900 transition-colors">
             Campaigns
           </Link>
           <Link href="/dashboard/donor" className="hover:text-slate-900 transition-colors">
             My Donations
           </Link>
+          <Link href="/dashboard/org" className="hover:text-slate-900 transition-colors">
+            Org Console
+          </Link>
+          <a
+            href="https://github.com/mdirfanpasha/tracedonate"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-slate-900 transition-colors flex items-center gap-1 font-medium"
+          >
+            <Github className="w-3.5 h-3.5" />
+            <span>GitHub</span>
+          </a>
           <a
             href={`${MONAD_EXPLORER_URL}/address/${TRACEDONATE_CONTRACT_ADDRESS}`}
             target="_blank"
