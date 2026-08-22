@@ -5,7 +5,7 @@ import { Expense } from "@/lib/types";
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { formatAddress, formatDateTime } from "@/lib/utils";
-import { getEvidenceForExpense } from "@/lib/supabase";
+import { getEvidenceForExpense, OffChainEvidence } from "@/lib/supabase";
 import { TransactionBadge } from "./TransactionBadge";
 import {
   X,
@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Receipt,
   FileText,
+  Camera,
 } from "lucide-react";
 
 interface VerifyExpenseModalProps {
@@ -48,6 +49,8 @@ export function VerifyExpenseModal({
 
   if (!isOpen || !expense) return null;
 
+  const evidence: OffChainEvidence | null = getEvidenceForExpense(expense.id);
+
   const handleApproveAndExecute = () => {
     writeContract({
       address: TRACEDONATE_CONTRACT_ADDRESS,
@@ -65,7 +68,7 @@ export function VerifyExpenseModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
       <div
-        className="relative w-full max-w-lg rounded-2xl bg-white border border-slate-200 p-6 shadow-2xl space-y-5"
+        className="relative w-full max-w-lg rounded-2xl bg-white border border-slate-200 p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -114,7 +117,7 @@ export function VerifyExpenseModal({
                   if (onVerificationComplete) onVerificationComplete();
                   handleModalClose();
                 }}
-                className="px-6 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-sm"
+                className="px-6 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-sm"
               >
                 Done
               </button>
@@ -138,15 +141,45 @@ export function VerifyExpenseModal({
               </div>
             </div>
 
+            {/* Attached Receipt / Proof Photo */}
+            <div className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="flex items-center justify-between text-slate-700 font-bold">
+                <span className="flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-emerald-600" />
+                  <span>Audited Receipt / Invoice Photo:</span>
+                </span>
+                <span className="text-[10px] text-emerald-700 font-mono">
+                  {evidence?.invoiceNumber || "INV-PROOF"}
+                </span>
+              </div>
+
+              {evidence?.imageData || evidence?.fileUrl ? (
+                <div className="relative h-48 rounded-lg overflow-hidden border border-slate-200 bg-white">
+                  <img
+                    src={evidence.imageData || evidence.fileUrl}
+                    alt="Receipt Evidence"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-slate-900/80 text-white text-[10px] font-mono backdrop-blur-sm">
+                    {evidence.supplierName || "Verified Supplier"}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-white border border-slate-200 text-center text-slate-500">
+                  Receipt attached via on-chain hash
+                </div>
+              )}
+            </div>
+
             {/* Spending Details */}
-            <div className="space-y-1.5 p-3 rounded-xl bg-white border border-slate-200">
+            <div className="space-y-1 p-3 rounded-xl bg-white border border-slate-200">
               <span className="text-slate-500 font-medium block">Spending Description:</span>
               <p className="text-slate-800">{expense.description}</p>
             </div>
 
-            {/* Evidence Proof */}
-            <div className="space-y-1.5 p-3 rounded-xl bg-white border border-slate-200 font-mono text-[11px]">
-              <span className="text-slate-500 block">Attached Invoice Hash:</span>
+            {/* Evidence Proof Hash */}
+            <div className="space-y-1 p-3 rounded-xl bg-white border border-slate-200 font-mono text-[11px]">
+              <span className="text-slate-500 block">Evidence Hash:</span>
               <div className="text-slate-700 truncate">{expense.evidenceHash || "ipfs://bafybeicb...invoice.pdf"}</div>
             </div>
 

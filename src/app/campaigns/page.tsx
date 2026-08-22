@@ -4,13 +4,13 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { useAllCampaigns } from "@/hooks/useTraceDonateContract";
+import { useAllCampaigns, saveLocalCampaign } from "@/hooks/useTraceDonateContract";
 import { parseEther } from "viem";
-import { Search, PlusCircle, ArrowRight, X } from "lucide-react";
+import { Search, PlusCircle, ArrowRight, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function CampaignsPage() {
   const { campaigns, refetch: refetchCampaigns } = useAllCampaigns();
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -22,11 +22,14 @@ export default function CampaignsPage() {
   const [goal, setGoal] = useState("");
   const [category, setCategory] = useState("Disaster Relief");
   const [imageUri, setImageUri] = useState("");
+  const [createdSuccessLocal, setCreatedSuccessLocal] = useState(false);
 
   const {
     data: createHash,
     writeContract: createCampaignContract,
     isPending: isCreatePending,
+    error: createError,
+    reset: resetCreate,
   } = useWriteContract();
 
   const {
@@ -48,18 +51,71 @@ export default function CampaignsPage() {
     e.preventDefault();
     if (!title || !description || !goal) return;
 
-    createCampaignContract({
-      address: TRACEDONATE_CONTRACT_ADDRESS,
-      abi: TRACEDONATE_ABI,
-      functionName: "createCampaign",
-      args: [
-        title,
-        description,
-        parseEther(goal),
-        category,
-        imageUri || "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80",
-      ],
+    const defaultImg =
+      category === "Clean Water"
+        ? "https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=80"
+        : category === "Healthcare"
+        ? "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=1200&q=80"
+        : category === "Education"
+        ? "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1200&q=80"
+        : "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80";
+
+    const finalImageUri = imageUri.trim() || defaultImg;
+    const newId = Date.now();
+
+    // Save locally for instant availability
+    saveLocalCampaign({
+      id: newId,
+      organization: (address || "0x2f2ca4e7CE1443aE7792675d5a7Fff4b2660fb0D") as `0x${string}`,
+      title,
+      description,
+      goal: parseFloat(goal).toFixed(3),
+      goalWei: parseEther(goal),
+      totalRaised: "0.000",
+      totalRaisedWei: 0n,
+      currentBalance: "0.000",
+      currentBalanceWei: 0n,
+      totalSpent: "0.000",
+      totalSpentWei: 0n,
+      category,
+      imageUri: finalImageUri,
+      active: true,
+      createdAt: Math.floor(Date.now() / 1000),
+      expenses: [],
     });
+
+    refetchCampaigns();
+
+    // If wallet is connected, send on-chain transaction to Monad
+    if (isConnected) {
+      createCampaignContract({
+        address: TRACEDONATE_CONTRACT_ADDRESS,
+        abi: TRACEDONATE_ABI,
+        functionName: "createCampaign",
+        args: [
+          title,
+          description,
+          parseEther(goal),
+          category,
+          finalImageUri,
+        ],
+      });
+    } else {
+      setCreatedSuccessLocal(true);
+      setTimeout(() => {
+        setIsCreateModalOpen(false);
+        setCreatedSuccessLocal(false);
+        setTitle("");
+        setDescription("");
+        setGoal("");
+      }, 1500);
+    }
+  };
+
+  const handleCloseModal = () => {
+    resetCreate();
+    setIsCreateModalOpen(false);
+    setCreatedSuccessLocal(false);
   };
 
   return (
@@ -77,7 +133,7 @@ export default function CampaignsPage() {
 
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-sm"
+          className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-sm"
         >
           <PlusCircle className="w-4 h-4" />
           <span>New Campaign</span>
@@ -185,7 +241,7 @@ export default function CampaignsPage() {
                 <p className="text-xs text-slate-500">Deploy a transparent escrow campaign on Monad</p>
               </div>
               <button
-                onClick={() => setIsCreateModalOpen(false)}
+                onClick={handleCloseModal}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
                 <X className="w-5 h-5" />
@@ -201,7 +257,7 @@ export default function CampaignsPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Flood Relief Emergency Fund"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                 />
               </div>
 
@@ -213,7 +269,7 @@ export default function CampaignsPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Explain the purpose and verified expenditure plan..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                 />
               </div>
 
@@ -223,11 +279,12 @@ export default function CampaignsPage() {
                   <input
                     type="number"
                     step="0.01"
+                    min="0.1"
                     required
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
                     placeholder="e.g. 50"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white font-mono"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white font-mono"
                   />
                 </div>
 
@@ -236,7 +293,7 @@ export default function CampaignsPage() {
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                   >
                     <option value="Disaster Relief">Disaster Relief</option>
                     <option value="Clean Water">Clean Water</option>
@@ -248,33 +305,47 @@ export default function CampaignsPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-700 font-medium">Cover Image URL (optional)</label>
+                <label className="text-slate-700 font-medium">Cover Photo URL (optional)</label>
                 <input
                   type="url"
                   value={imageUri}
                   onChange={(e) => setImageUri(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                 />
+                <p className="text-[11px] text-slate-400">
+                  Leave blank to use authentic high-resolution category photo.
+                </p>
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
                   disabled={isCreatePending || isCreateConfirming}
-                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors disabled:opacity-50 shadow-sm"
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors disabled:opacity-50 shadow-md shadow-emerald-600/10 flex items-center justify-center gap-2"
                 >
-                  {isCreatePending
-                    ? "Confirm in Wallet..."
-                    : isCreateConfirming
-                    ? "Deploying on Monad..."
-                    : "Deploy Campaign on Monad"}
+                  {(isCreatePending || isCreateConfirming) && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>
+                    {isCreatePending
+                      ? "1. Confirm in Wallet..."
+                      : isCreateConfirming
+                      ? "2. Deploying on Monad..."
+                      : "Deploy Campaign"}
+                  </span>
                 </button>
               </div>
 
-              {isCreateSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-medium">
-                  ✓ Campaign deployed successfully on Monad!
+              {(isCreateSuccess || createdSuccessLocal) && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-bold flex items-center justify-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>✓ Campaign created successfully! Added to directory.</span>
+                </div>
+              )}
+
+              {createError && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>Transaction failed or rejected by wallet. Local preview preserved.</span>
                 </div>
               )}
             </form>

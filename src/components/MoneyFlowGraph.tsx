@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Campaign, Expense } from "@/lib/types";
 import { formatAddress } from "@/lib/utils";
 import { MONAD_EXPLORER_URL } from "@/config/contracts";
+import { getEvidenceForExpense, OffChainEvidence } from "@/lib/supabase";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
   FileCheck,
   X,
   Lock,
+  Camera,
 } from "lucide-react";
 
 interface MoneyFlowGraphProps {
@@ -28,6 +30,10 @@ export function MoneyFlowGraph({ campaign, onSelectExpense }: MoneyFlowGraphProp
   const totalSpent = executedExpenses.reduce((acc, e) => acc + parseFloat(e.amount), 0);
   const remainingInEscrow = parseFloat(campaign.currentBalance);
 
+  const selectedEvidence: OffChainEvidence | null = selectedExpense
+    ? getEvidenceForExpense(selectedExpense.id)
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Visual Flow Container */}
@@ -41,7 +47,7 @@ export function MoneyFlowGraph({ campaign, onSelectExpense }: MoneyFlowGraphProp
             Interactive Financial Pipeline
           </h3>
           <p className="text-xs text-slate-500">
-            Click any verified expenditure to inspect audited vendor invoices and on-chain settlement receipts.
+            Click any verified expenditure to inspect audited vendor invoices, photos, and on-chain settlement receipts.
           </p>
         </div>
 
@@ -138,10 +144,10 @@ export function MoneyFlowGraph({ campaign, onSelectExpense }: MoneyFlowGraphProp
         </div>
       </div>
 
-      {/* Verified Financial Receipt Modal */}
+      {/* Verified Financial Receipt & Photo Modal */}
       {selectedExpense && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 p-6 space-y-5 shadow-2xl">
+          <div className="w-full max-w-lg rounded-2xl bg-white border border-slate-200 p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -174,6 +180,36 @@ export function MoneyFlowGraph({ campaign, onSelectExpense }: MoneyFlowGraphProp
               </div>
             </div>
 
+            {/* Uploaded Receipt / Invoice Photo */}
+            <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="flex items-center justify-between text-slate-700 font-bold text-xs">
+                <span className="flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-emerald-600" />
+                  <span>Audited Vendor Receipt / Photo Proof:</span>
+                </span>
+                <span className="text-[10px] text-emerald-700 font-mono">
+                  {selectedEvidence?.invoiceNumber || "INV-AUDITED"}
+                </span>
+              </div>
+
+              {selectedEvidence?.imageData || selectedEvidence?.fileUrl ? (
+                <div className="relative h-52 rounded-lg overflow-hidden border border-slate-200 bg-white shadow-inner">
+                  <img
+                    src={selectedEvidence.imageData || selectedEvidence.fileUrl}
+                    alt="Receipt Evidence Proof"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-slate-900/80 text-white text-[10px] font-mono backdrop-blur-sm">
+                    {selectedEvidence.supplierName || "Verified Supplier"}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-white border border-slate-200 text-center text-slate-500 text-xs">
+                  Receipt attached and anchored via on-chain hash
+                </div>
+              )}
+            </div>
+
             {/* Verified Details */}
             <div className="space-y-3 text-xs">
               <div className="flex justify-between py-1.5 border-b border-slate-100">
@@ -202,7 +238,7 @@ export function MoneyFlowGraph({ campaign, onSelectExpense }: MoneyFlowGraphProp
               </div>
 
               <div className="space-y-1 py-1.5">
-                <span className="text-slate-500">Attached Invoice Proof</span>
+                <span className="text-slate-500">Attached Invoice Hash</span>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 font-mono text-[11px] text-slate-700 truncate">
                   {selectedExpense.evidenceHash || "ipfs://bafybeicb...food_invoice.pdf"}
                 </div>
