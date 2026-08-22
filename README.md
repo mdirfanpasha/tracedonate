@@ -7,13 +7,15 @@
 
 ## 🌟 Live Application & Contract Links
 
-- **Live Public Website:** [https://tracedonate.vercel.app](https://tracedonate.vercel.app)
-- **Monad Contract Address:** [`0x892a23381A17f223a4d9693B980C6563f82c1014`](https://testnet.monadvision.com/address/0x892a23381A17f223a4d9693B980C6563f82c1014)
-- **Monad Network:** Monad Testnet (Chain ID: `10143`)
-- **RPC Endpoint:** `https://testnet-rpc.monad.xyz`
-- **Block Explorers:** [MonadVision](https://testnet.monadvision.com) / [MonadScan](https://testnet.monadscan.com)
-- **Official Monad Faucet:** [https://faucet.monad.xyz](https://faucet.monad.xyz)
-- **GitHub Repository:** [https://github.com/mdirfanpasha/tracedonate](https://github.com/mdirfanpasha/tracedonate)
+| Resource | Link |
+| :--- | :--- |
+| **Live Public Website** | [https://tracedonate.vercel.app](https://tracedonate.vercel.app) |
+| **Monad Contract Address** | [`0x892a23381A17f223a4d9693B980C6563f82c1014`](https://testnet.monadvision.com/address/0x892a23381A17f223a4d9693B980C6563f82c1014) |
+| **Network** | Monad Testnet (Chain ID: `10143`) |
+| **RPC Endpoint** | `https://testnet-rpc.monad.xyz` |
+| **Block Explorers** | [MonadVision](https://testnet.monadvision.com/address/0x892a23381A17f223a4d9693B980C6563f82c1014) / [MonadScan](https://testnet.monadscan.com) |
+| **Official Monad Faucet** | [https://faucet.monad.xyz](https://faucet.monad.xyz) |
+| **GitHub Repository** | [https://github.com/mdirfanpasha/tracedonate](https://github.com/mdirfanpasha/tracedonate) |
 
 ---
 
@@ -35,14 +37,34 @@ When donors give money to traditional charities, their contribution disappears i
 
 ---
 
-## 📜 Smart Contract Architecture (`TraceDonate.sol`)
+## 📜 Comprehensive Smart Contract Documentation (`TraceDonate.sol`)
 
-The core financial logic is implemented in [`contracts/src/TraceDonate.sol`](contracts/src/TraceDonate.sol). The contract acts as a trustless financial custodian ensuring funds can only leave the contract when sent directly to verified suppliers.
+The primary smart contract is located at [`contracts/src/TraceDonate.sol`](contracts/src/TraceDonate.sol) and compiled with Solidity `^0.8.24`.
 
-### 📐 Data Structures
+### 📋 Contract Overview Matrix
+
+| Property | Specification |
+| :--- | :--- |
+| **Contract Name** | `TraceDonate` |
+| **Source File** | `contracts/src/TraceDonate.sol` |
+| **Solidity Version** | `^0.8.24` |
+| **Deployed Address** | `0x892a23381A17f223a4d9693B980C6563f82c1014` |
+| **Network** | Monad Testnet (`10143`) |
+| **Escrow Invariant** | 100% of incoming `msg.value` is locked in contract balance until itemized verifier payouts |
+| **Reentrancy Protection** | Custom gas-optimized non-reentrant mutex |
+| **Frontend ABI Export** | `src/config/contracts.ts` |
+
+---
+
+### 📐 Structs & Data Models
 
 ```solidity
-enum ExpenseStatus { Pending, Approved, Rejected, Executed }
+enum ExpenseStatus {
+    Pending,   // 0: Awaiting verifier invoice audit
+    Approved,  // 1: Verified by authorized auditor
+    Rejected,  // 2: Audit rejected (insufficient proof)
+    Executed   // 3: Settled; funds transferred to vendor
+}
 
 struct Campaign {
     uint256 id;
@@ -66,7 +88,7 @@ struct Expense {
     address payable recipientSupplier;
     string category;
     string description;
-    string evidenceHash;     // IPFS hash / receipt reference
+    string evidenceHash;     // IPFS hash / off-chain receipt CID
     ExpenseStatus status;
     uint256 createdAt;
     uint256 executedAt;
@@ -75,16 +97,33 @@ struct Expense {
 struct Donation {
     uint256 campaignId;
     address donor;
-    uint256 amount;
+    uint256 amount;          // in wei
     uint256 timestamp;
 }
 ```
 
 ---
 
-### ⚙️ Core Smart Contract Functions
+### 🛡️ Custom Errors & Revert Rules
 
-#### 1. Campaign Creation
+| Custom Error | Condition |
+| :--- | :--- |
+| `Unauthorized()` | Sender is not the campaign organizer (for expenses) or verifier/owner (for payouts) |
+| `CampaignNotFound()` | The requested `campaignId` is 0 or greater than `campaignCount` |
+| `CampaignNotActive()` | Attempting to donate to or spend from an inactive campaign |
+| `ZeroDonation()` | Attempting to donate `0 MON` |
+| `GoalMustBeGreaterThanZero()` | Creating a campaign with goal of `0` |
+| `InvalidAddress()` | Supplying `address(0)` for supplier or verifier |
+| `InsufficientCampaignBalance()` | Expense request amount exceeds campaign's available escrow balance |
+| `ExpenseNotFound()` | The requested `expenseId` does not exist |
+| `ExpenseNotPending()` | Attempting to approve/execute an expense that is already processed |
+| `ReentrancyGuardReentrantCall()` | Reentrant invocation detected |
+
+---
+
+### ⚙️ Core Functions Breakdown
+
+#### 1. `createCampaign`
 ```solidity
 function createCampaign(
     string memory title,
@@ -94,20 +133,19 @@ function createCampaign(
     string memory imageUri
 ) external returns (uint256)
 ```
-- **Access:** Public. Anyone can deploy a transparent campaign.
-- **Rules:** `goal` must be $> 0$.
-- **Emits:** `event CampaignCreated(uint256 indexed campaignId, address indexed organization, string title, uint256 goal, string category, uint256 timestamp)`
+- **Description:** Deploys a new fundraising campaign with dedicated escrow accounting.
+- **Access:** Public.
+- **Emits:** `CampaignCreated(campaignId, msg.sender, title, goal, category, block.timestamp)`
 
-#### 2. Escrow Donation
+#### 2. `donate`
 ```solidity
 function donate(uint256 campaignId) external payable nonReentrant
 ```
-- **Access:** Public.
-- **Rules:** `msg.value > 0`, campaign must exist and be active.
-- **Escrow Invariant:** `msg.value` is locked in contract balance; `campaign.totalRaised` and `campaign.currentBalance` are credited.
-- **Emits:** `event DonationReceived(uint256 indexed campaignId, address indexed donor, uint256 amount, uint256 currentBalance, uint256 timestamp)`
+- **Description:** Donates native `MON` to a campaign. Funds are locked in smart contract escrow.
+- **Access:** Public (payable).
+- **Emits:** `DonationReceived(campaignId, msg.sender, msg.value, currentBalance, block.timestamp)`
 
-#### 3. Expense Creation
+#### 3. `createExpense`
 ```solidity
 function createExpense(
     uint256 campaignId,
@@ -118,58 +156,66 @@ function createExpense(
     string memory evidenceHash
 ) external returns (uint256)
 ```
-- **Access:** Only the campaign organizer (`onlyCampaignOrg`).
-- **Rules:** `amount <= campaign.currentBalance`, `recipientSupplier != address(0)`.
-- **Emits:** `event ExpenseCreated(uint256 indexed campaignId, uint256 indexed expenseId, address indexed recipientSupplier, uint256 amount, string category, string evidenceHash, uint256 timestamp)`
+- **Description:** Campaign organizer submits an itemized spending request with vendor wallet and receipt hash.
+- **Access:** Campaign organizer only (`msg.sender == campaign.organization`).
+- **Emits:** `ExpenseCreated(campaignId, expenseId, recipientSupplier, amount, category, evidenceHash, block.timestamp)`
 
-#### 4. Verifier Audit & Direct Payout Execution
+#### 4. `approveAndExecuteExpense`
 ```solidity
 function approveAndExecuteExpense(uint256 expenseId) external onlyVerifierOrOwner nonReentrant
 ```
-- **Access:** Only authorized verifiers or contract owner.
-- **Execution Invariant:** Smart contract transfers exact `amount` directly to `recipientSupplier.transfer(amount)`.
-- **Accounting:** `campaign.currentBalance -= amount`, `campaign.totalSpent += amount`, `expense.status = Executed`.
-- **Double Execution Protection:** Reverts if `expense.status != Pending`.
-- **Emits:** `event ExpenseApproved(...)` & `event ExpenseExecuted(...)`
+- **Description:** 1-click verifier audit and payout execution. Transfers `MON` **directly to `recipientSupplier`**.
+- **Access:** Authorized verifiers or contract owner.
+- **Emits:** `ExpenseApproved(...)` and `ExpenseExecuted(...)`
 
-#### 5. View & Retrieval Functions
-- `getCampaign(uint256 campaignId)` $\to$ Returns full campaign struct.
-- `getAllCampaigns()` $\to$ Returns array of all campaigns on-chain.
-- `getCampaignExpenses(uint256 campaignId)` $\to$ Returns all itemized expenses for a campaign.
-- `getDonorDonations(address donor)` $\to$ Returns donation history for a donor address.
-- `getGlobalStats()` $\to$ Returns total campaigns, total donated, and total spent across all campaigns.
+#### 5. View & Analytics Functions
+- `getCampaign(uint256 campaignId)` $\to$ Returns `Campaign` struct.
+- `getAllCampaigns()` $\to$ Returns array of all active campaigns.
+- `getCampaignExpenses(uint256 campaignId)` $\to$ Returns all expenses for a campaign.
+- `getDonorDonations(address donor)` $\to$ Returns all donation records for a donor wallet.
+- `getGlobalStats()` $\to$ Returns `(totalCampaigns, totalDonated, totalSpent, totalDonations, totalExpensesRecorded)`.
 
 ---
 
-## 💻 Interacting with the Smart Contract
+## 💻 How to Interact with the Smart Contract
 
-### A. Via Foundry / Cast CLI
+### A. Via Cast / Foundry CLI
 
 ```bash
-# 1. Read all campaigns on Monad Testnet
-cast call 0x892a23381A17f223a4d9693B980C6563f82c1014 "getAllCampaigns()" --rpc-url https://testnet-rpc.monad.xyz
-
-# 2. Inspect escrow balance of the contract
+# 1. Inspect contract on-chain balance (funds held in escrow)
 cast balance 0x892a23381A17f223a4d9693B980C6563f82c1014 --rpc-url https://testnet-rpc.monad.xyz
 
-# 3. Donate 0.05 MON to Campaign #1
+# 2. Read all campaigns on Monad Testnet
+cast call 0x892a23381A17f223a4d9693B980C6563f82c1014 "getAllCampaigns()" --rpc-url https://testnet-rpc.monad.xyz
+
+# 3. Read global transparency statistics
+cast call 0x892a23381A17f223a4d9693B980C6563f82c1014 "getGlobalStats()" --rpc-url https://testnet-rpc.monad.xyz
+
+# 4. Donate 0.05 MON to Campaign #1
 cast send 0x892a23381A17f223a4d9693B980C6563f82c1014 "donate(uint256)" 1 --value 0.05ether --rpc-url https://testnet-rpc.monad.xyz --private-key $YOUR_PRIVATE_KEY
 ```
 
-### B. Via Viem / Wagmi TypeScript
+### B. Via Viem / TypeScript
 
 ```typescript
-import { parseEther } from "viem";
+import { createWalletClient, custom, parseEther } from "viem";
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
 
-// Donate 0.1 MON
-await walletClient.writeContract({
+// Initialize wallet client on Monad Testnet (Chain ID 10143)
+const client = createWalletClient({
+  transport: custom(window.ethereum),
+});
+
+// Donate 0.1 MON to Campaign #1
+const hash = await client.writeContract({
   address: TRACEDONATE_CONTRACT_ADDRESS,
   abi: TRACEDONATE_ABI,
   functionName: "donate",
   args: [1n],
   value: parseEther("0.1"),
 });
+
+console.log("Donation Tx Hash:", hash);
 ```
 
 ---
@@ -328,7 +374,7 @@ forge script contracts/script/DeployTraceDonate.s.sol:DeployTraceDonateScript --
 - [x] **Digital Impact Receipts:** Cryptographically proven certificates with explorer links.
 - [x] **Automated Tests:** 12/12 passing test cases in Hardhat and Foundry.
 - [x] **Premium Fintech Design:** Bright, warm, human, social-impact aesthetic.
-- [x] **Deploy Ready:** Next.js build passes cleanly for production deployment.
+- [x] **Deploy Ready:** Next.js build passes cleanly for production deployment on Vercel.
 
 ---
 
