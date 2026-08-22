@@ -12,6 +12,65 @@ const LOCAL_CAMPAIGNS_KEY = "tracedonate_local_campaigns";
 const LOCAL_EXPENSES_KEY = "tracedonate_local_expenses";
 const LOCAL_DONATIONS_KEY = "tracedonate_local_donations";
 
+// Initial authentic demo donations for campaigns
+const SEED_DONATIONS: Record<number, Donation[]> = {
+  1: [
+    {
+      campaignId: 1,
+      donor: "0x71C8340293815b8192834f8281923849188888b2",
+      amount: "15.000",
+      amountWei: parseEther("15.000"),
+      timestamp: Math.floor(Date.now() / 1000) - 3600 * 2,
+    },
+    {
+      campaignId: 1,
+      donor: "0x98A19045812984719283471928347192834444f1",
+      amount: "25.000",
+      amountWei: parseEther("25.000"),
+      timestamp: Math.floor(Date.now() / 1000) - 3600 * 5,
+    },
+    {
+      campaignId: 1,
+      donor: "0x32DF7819283471928347192834719283471999c0",
+      amount: "14.000",
+      amountWei: parseEther("14.000"),
+      timestamp: Math.floor(Date.now() / 1000) - 86400,
+    },
+  ],
+  2: [
+    {
+      campaignId: 2,
+      donor: "0x15D39918234192834719283471928347192333a1",
+      amount: "12.000",
+      amountWei: parseEther("12.000"),
+      timestamp: Math.floor(Date.now() / 1000) - 3600 * 4,
+    },
+    {
+      campaignId: 2,
+      donor: "0x88FE2381940192834719283471928347192000e2",
+      amount: "18.000",
+      amountWei: parseEther("18.000"),
+      timestamp: Math.floor(Date.now() / 1000) - 86400 * 2,
+    },
+  ],
+  3: [
+    {
+      campaignId: 3,
+      donor: "0x99B41829381928347192834719283471928112c4",
+      amount: "20.000",
+      amountWei: parseEther("20.000"),
+      timestamp: Math.floor(Date.now() / 1000) - 3600 * 6,
+    },
+    {
+      campaignId: 3,
+      donor: "0x44A01829381283471928347192834719283888f0",
+      amount: "4.000",
+      amountWei: parseEther("4.000"),
+      timestamp: Math.floor(Date.now() / 1000) - 86400 * 3,
+    },
+  ],
+};
+
 export function getLocalCampaigns(): Campaign[] {
   if (typeof window === "undefined") return [];
   try {
@@ -70,14 +129,15 @@ export function recordLocalDonation(
     // 2. Record in local donations list
     const rawDonations = localStorage.getItem(LOCAL_DONATIONS_KEY);
     const donations: Donation[] = rawDonations ? JSON.parse(rawDonations) : [];
-    donations.unshift({
+    const newDonation: Donation = {
       campaignId,
       donor: (donorAddress || "0x2f2ca4e7CE1443aE7792675d5a7Fff4b2660fb0D") as `0x${string}`,
-      amount,
+      amount: parseFloat(amount).toFixed(3),
       amountWei: parseEther(amount),
       timestamp: Math.floor(Date.now() / 1000),
       txHash: txHash || `0x${Math.random().toString(16).substring(2, 10)}...monad`,
-    });
+    };
+    donations.unshift(newDonation);
     localStorage.setItem(LOCAL_DONATIONS_KEY, JSON.stringify(donations));
     window.dispatchEvent(new Event("tracedonate_update"));
   } catch (e) {
@@ -146,7 +206,7 @@ export function useAllCampaigns() {
     abi: TRACEDONATE_ABI,
     functionName: "getAllCampaigns",
     query: {
-      refetchInterval: 3000, // 3-second real-time polling from Monad Testnet
+      refetchInterval: 3000,
     },
   });
 
@@ -201,16 +261,10 @@ export function useAllCampaigns() {
     };
   }, [loadLocal, loadSupabase]);
 
-  // Combine onChain campaigns + SEED campaigns + Local campaigns + Supabase campaigns (deduplicated by ID)
   const allMap = new Map<number, Campaign>();
 
-  // 1. Initial Seed campaigns
   (SEED_CAMPAIGNS as unknown as Campaign[]).forEach((c) => allMap.set(c.id, c));
-
-  // 2. Supabase campaigns
   supabaseCampaigns.forEach((c) => allMap.set(c.id, c));
-
-  // 3. Locally created / saved campaigns (includes recent local donations)
   localCampaigns.forEach((c) => {
     const existing = allMap.get(c.id);
     allMap.set(c.id, {
@@ -220,7 +274,6 @@ export function useAllCampaigns() {
     });
   });
 
-  // 4. Smart contract campaigns on Monad
   if (Array.isArray(data)) {
     data.forEach((c: any) => {
       const id = Number(c.id);
@@ -264,7 +317,6 @@ export function useAllCampaigns() {
     });
   }
 
-  // Return list with newest campaigns first
   const mergedCampaigns = Array.from(allMap.values()).sort((a, b) => b.id - a.id);
 
   return {
@@ -321,7 +373,6 @@ export function useCampaignDetails(campaignId: number) {
     };
   }, [loadLocalExpenses]);
 
-  // Look up matching campaign from live merged list first
   const matchedFromAll = campaigns.find((c) => c.id === campaignId);
 
   const seedFallback =
@@ -379,6 +430,42 @@ export function useCampaignDetails(campaignId: number) {
       refetchAll();
     },
   };
+}
+
+export function useCampaignDonations(campaignId: number) {
+  const [localDonations, setLocalDonations] = useState<Donation[]>([]);
+
+  const loadDonations = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(LOCAL_DONATIONS_KEY);
+      if (raw) {
+        const all: Donation[] = JSON.parse(raw);
+        const filtered = all.filter((d) => d.campaignId === campaignId);
+        setLocalDonations(filtered);
+      }
+    } catch {}
+  }, [campaignId]);
+
+  useEffect(() => {
+    loadDonations();
+    window.addEventListener("tracedonate_update", loadDonations);
+    window.addEventListener("storage", loadDonations);
+    const interval = setInterval(loadDonations, 3000);
+    return () => {
+      window.removeEventListener("tracedonate_update", loadDonations);
+      window.removeEventListener("storage", loadDonations);
+      clearInterval(interval);
+    };
+  }, [loadDonations]);
+
+  const seedList = SEED_DONATIONS[campaignId] || [];
+  const merged = [
+    ...localDonations,
+    ...seedList.filter((sd) => !localDonations.some((ld) => ld.timestamp === sd.timestamp)),
+  ];
+
+  return merged.sort((a, b) => b.timestamp - a.timestamp);
 }
 
 export function useDonorHistory(donorAddress?: string) {
