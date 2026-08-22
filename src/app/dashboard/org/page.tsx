@@ -17,6 +17,8 @@ import {
   ExternalLink,
   Layers,
   ArrowRight,
+  Receipt,
+  Building2,
 } from "lucide-react";
 
 export default function OrgDashboardPage() {
@@ -38,25 +40,33 @@ export default function OrgDashboardPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-10">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-        <div>
+        <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             Organization & Verifier Console
           </h1>
           <p className="text-xs sm:text-sm text-slate-600">
-            Submit itemized vendor invoices and execute direct on-chain settlements on Monad.
+            Manage your campaigns, submit itemized vendor invoices with receipts, and execute verified Monad payouts.
           </p>
         </div>
 
-        <button
-          onClick={() => setSelectedCampaignForExpense(campaigns[0])}
-          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-sm"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>New Expense</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/campaigns"
+            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            All Campaigns
+          </Link>
+          <button
+            onClick={() => setSelectedCampaignForExpense(campaigns[0])}
+            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-sm"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>New Expense</span>
+          </button>
+        </div>
       </div>
 
       {/* Overview Metrics */}
@@ -80,6 +90,81 @@ export default function OrgDashboardPage() {
           <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900">
             {totalInEscrow} <span className="text-xs text-slate-500 font-normal">MON</span>
           </div>
+        </div>
+      </div>
+
+      {/* Your Managed Campaigns */}
+      <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/80 shadow-card space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-emerald-600" />
+            <h3 className="font-bold text-lg text-slate-900">Your Managed Campaigns ({campaigns.length})</h3>
+          </div>
+          <Link
+            href="/campaigns"
+            className="text-xs text-emerald-700 hover:underline font-semibold flex items-center gap-1"
+          >
+            <span>+ Create New</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {campaigns.map((camp) => (
+            <div
+              key={camp.id}
+              className="p-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50/50 space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                    {camp.category}
+                  </span>
+                  <h4 className="font-bold text-sm text-slate-900 mt-1 line-clamp-1">
+                    {camp.title}
+                  </h4>
+                </div>
+                <Link
+                  href={`/campaigns/${camp.id}`}
+                  className="text-xs text-slate-500 hover:text-slate-900 p-1 font-mono"
+                  title="View campaign page"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-2 px-3 rounded-lg bg-white border border-slate-100 text-xs font-mono">
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Raised</span>
+                  <span className="font-bold text-slate-900">{camp.totalRaised} M</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Escrow</span>
+                  <span className="font-bold text-emerald-700">{camp.currentBalance} M</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Spent</span>
+                  <span className="font-bold text-slate-700">{camp.totalSpent} M</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <Link
+                  href={`/campaigns/${camp.id}#follow-the-money`}
+                  className="text-xs text-slate-600 hover:text-slate-900 font-medium"
+                >
+                  {camp.expenses?.length || 0} Expenses
+                </Link>
+                <button
+                  onClick={() => setSelectedCampaignForExpense(camp)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Add Expense</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

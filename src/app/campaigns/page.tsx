@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
@@ -37,6 +37,23 @@ export default function CampaignsPage() {
     isSuccess: isCreateSuccess,
   } = useWaitForTransactionReceipt({ hash: createHash });
 
+  // Auto-refresh and close modal when on-chain transaction confirms
+  useEffect(() => {
+    if (isCreateSuccess) {
+      refetchCampaigns();
+      setCreatedSuccessLocal(true);
+      const timer = setTimeout(() => {
+        setIsCreateModalOpen(false);
+        setCreatedSuccessLocal(false);
+        setTitle("");
+        setDescription("");
+        setGoal("");
+        setImageUri("");
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isCreateSuccess, refetchCampaigns]);
+
   const categories = ["All", "Disaster Relief", "Clean Water", "Healthcare", "Infrastructure", "Education"];
 
   const filteredCampaigns = campaigns.filter((c) => {
@@ -63,7 +80,7 @@ export default function CampaignsPage() {
     const finalImageUri = imageUri.trim() || defaultImg;
     const newId = Date.now();
 
-    // Save locally for instant availability
+    // Save locally for instant website and dashboard synchronization
     saveLocalCampaign({
       id: newId,
       organization: (address || "0x2f2ca4e7CE1443aE7792675d5a7Fff4b2660fb0D") as `0x${string}`,
@@ -86,7 +103,7 @@ export default function CampaignsPage() {
 
     refetchCampaigns();
 
-    // If wallet is connected, send on-chain transaction to Monad
+    // If connected, execute on-chain smart contract deployment on Monad
     if (isConnected) {
       createCampaignContract({
         address: TRACEDONATE_CONTRACT_ADDRESS,
@@ -108,6 +125,7 @@ export default function CampaignsPage() {
         setTitle("");
         setDescription("");
         setGoal("");
+        setImageUri("");
       }, 1500);
     }
   };
@@ -279,7 +297,7 @@ export default function CampaignsPage() {
                   <input
                     type="number"
                     step="0.01"
-                    min="0.1"
+                    min="0.01"
                     required
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
@@ -330,7 +348,7 @@ export default function CampaignsPage() {
                       ? "1. Confirm in Wallet..."
                       : isCreateConfirming
                       ? "2. Deploying on Monad..."
-                      : "Deploy Campaign"}
+                      : "Deploy Campaign on Monad"}
                   </span>
                 </button>
               </div>

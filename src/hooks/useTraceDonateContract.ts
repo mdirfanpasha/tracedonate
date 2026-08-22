@@ -4,7 +4,7 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAcc
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI, SEED_CAMPAIGNS } from "@/config/contracts";
 import { Campaign, Expense, Donation } from "@/lib/types";
 import { formatMon } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const LOCAL_CAMPAIGNS_KEY = "tracedonate_local_campaigns";
 const LOCAL_EXPENSES_KEY = "tracedonate_local_expenses";
@@ -25,6 +25,7 @@ export function saveLocalCampaign(campaign: Campaign) {
     const existing = getLocalCampaigns();
     const updated = [campaign, ...existing.filter((c) => c.id !== campaign.id)];
     localStorage.setItem(LOCAL_CAMPAIGNS_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new Event("tracedonate_update"));
   } catch (e) {
     console.warn("Failed to save local campaign:", e);
   }
@@ -49,6 +50,7 @@ export function saveLocalExpense(campaignId: number, expense: Expense) {
     const all: Record<number, Expense[]> = raw ? JSON.parse(raw) : {};
     all[campaignId] = [expense, ...(all[campaignId] || [])];
     localStorage.setItem(LOCAL_EXPENSES_KEY, JSON.stringify(all));
+    window.dispatchEvent(new Event("tracedonate_update"));
   } catch (e) {
     console.warn("Failed to save local expense:", e);
   }
@@ -63,43 +65,66 @@ export function useAllCampaigns() {
 
   const [localCampaigns, setLocalCampaigns] = useState<Campaign[]>([]);
 
-  useEffect(() => {
+  const loadLocal = useCallback(() => {
     setLocalCampaigns(getLocalCampaigns());
   }, []);
 
-  const onChainCampaigns: Campaign[] = Array.isArray(data) && data.length > 0
-    ? data.map((c: any) => ({
-        id: Number(c.id),
-        organization: c.organization,
-        title: c.title,
-        description: c.description,
-        goal: formatMon(c.goal),
-        goalWei: BigInt(c.goal),
-        totalRaised: formatMon(c.totalRaised),
-        totalRaisedWei: BigInt(c.totalRaised),
-        currentBalance: formatMon(c.currentBalance),
-        currentBalanceWei: BigInt(c.currentBalance),
-        totalSpent: formatMon(c.totalSpent),
-        totalSpentWei: BigInt(c.totalSpent),
-        category: c.category || "General Relief",
-        imageUri: c.imageUri || "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80",
-        active: Boolean(c.active),
-        createdAt: Number(c.createdAt),
-        expenses: [],
-      }))
-    : (SEED_CAMPAIGNS as unknown as Campaign[]);
+  useEffect(() => {
+    loadLocal();
+    window.addEventListener("tracedonate_update", loadLocal);
+    window.addEventListener("storage", loadLocal);
+    return () => {
+      window.removeEventListener("tracedonate_update", loadLocal);
+      window.removeEventListener("storage", loadLocal);
+    };
+  }, [loadLocal]);
 
-  // Merge on-chain / seed with any newly created local campaigns
-  const mergedCampaigns = [
-    ...localCampaigns.filter((lc) => !onChainCampaigns.some((oc) => oc.id === lc.id)),
-    ...onChainCampaigns,
-  ];
+  // Combine onChain campaigns + SEED campaigns + Local campaigns (deduplicated by ID)
+  const allMap = new Map<number, Campaign>();
+
+  // 1. Initial Seed campaigns
+  (SEED_CAMPAIGNS as unknown as Campaign[]).forEach((c) => allMap.set(c.id, c));
+
+  // 2. Locally created / saved campaigns
+  localCampaigns.forEach((c) => allMap.set(c.id, c));
+
+  // 3. Smart contract campaigns on Monad (highest precedence)
+  if (Array.isArray(data)) {
+    data.forEach((c: any) => {
+      const id = Number(c.id);
+      if (id > 0) {
+        const existing = allMap.get(id);
+        allMap.set(id, {
+          id,
+          organization: c.organization,
+          title: c.title || existing?.title || `Campaign #${id}`,
+          description: c.description || existing?.description || "",
+          goal: formatMon(c.goal),
+          goalWei: BigInt(c.goal),
+          totalRaised: formatMon(c.totalRaised),
+          totalRaisedWei: BigInt(c.totalRaised),
+          currentBalance: formatMon(c.currentBalance),
+          currentBalanceWei: BigInt(c.currentBalance),
+          totalSpent: formatMon(c.totalSpent),
+          totalSpentWei: BigInt(c.totalSpent),
+          category: c.category || existing?.category || "General Relief",
+          imageUri: c.imageUri || existing?.imageUri || "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80",
+          active: Boolean(c.active),
+          createdAt: Number(c.createdAt),
+          expenses: existing?.expenses || [],
+        });
+      }
+    });
+  }
+
+  // Return list with newest campaigns first
+  const mergedCampaigns = Array.from(allMap.values()).sort((a, b) => b.id - a.id);
 
   return {
     campaigns: mergedCampaigns,
     isLoading,
     refetch: () => {
-      setLocalCampaigns(getLocalCampaigns());
+      loadLocal();
       refetch();
     },
     error,
@@ -124,9 +149,19 @@ export function useCampaignDetails(campaignId: number) {
 
   const [localExpenses, setLocalExpenses] = useState<Expense[]>([]);
 
-  useEffect(() => {
+  const loadLocalExpenses = useCallback(() => {
     setLocalExpenses(getLocalExpenses(campaignId));
   }, [campaignId]);
+
+  useEffect(() => {
+    loadLocalExpenses();
+    window.addEventListener("tracedonate_update", loadLocalExpenses);
+    window.addEventListener("storage", loadLocalExpenses);
+    return () => {
+      window.removeEventListener("tracedonate_update", loadLocalExpenses);
+      window.removeEventListener("storage", loadLocalExpenses);
+    };
+  }, [loadLocalExpenses]);
 
   const seedFallback =
     getLocalCampaigns().find((c) => c.id === campaignId) ||
@@ -183,7 +218,7 @@ export function useCampaignDetails(campaignId: number) {
     campaign,
     isLoading: isCampaignLoading || isExpensesLoading,
     refetch: () => {
-      setLocalExpenses(getLocalExpenses(campaignId));
+      loadLocalExpenses();
       refetchCampaign();
       refetchExpenses();
     },
