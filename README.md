@@ -7,7 +7,7 @@
 
 ## 🌟 Live Application & Contract Links
 
-- **Live Public Website:** [https://trace-donate.vercel.app](https://trace-donate.vercel.app) *(Deploy-ready Next.js app)*
+- **Live Local App:** [http://localhost:3000](http://localhost:3000)
 - **Monad Contract Address:** [`0x892a23381A17f223a4d9693B980C6563f82c1014`](https://testnet.monadvision.com/address/0x892a23381A17f223a4d9693B980C6563f82c1014)
 - **Monad Network:** Monad Testnet (Chain ID: `10143`)
 - **Block Explorer:** [MonadVision](https://testnet.monadvision.com) / [MonadScan](https://testnet.monadscan.com)
@@ -26,7 +26,7 @@ When donors give money to traditional charities, their contribution disappears i
 **TraceDonate** removes the need for blind trust by locking 100% of donations in a **Monad smart contract escrow (`TraceDonate.sol`)**.
 
 1. **Funds Held in Escrow:** Organizations cannot withdraw lump sums into private accounts.
-2. **Itemized Expense Requests:** Organizations submit spending requests specifying the vendor's wallet address, category, and attached invoice evidence.
+2. **Itemized Expense Requests:** Organizations submit spending requests specifying the vendor's wallet address, category, and attached mandatory receipt proof.
 3. **Verifier Audit:** Auditors review invoice legitimacy and authorize payment.
 4. **Direct Settlement:** The smart contract transfers native `MON` tokens **directly to the supplier/vendor wallet**.
 5. **Follow Your Money:** Donors inspect a live interactive financial pipeline linking their donation to verified vendor payouts with real Monad explorer transaction hashes.
@@ -83,22 +83,22 @@ Itemized micro-expense tracking requires recording every food bundle, medical ki
 1. **Connect Wallet:** Click **Connect Wallet** in the top navigation and connect your MetaMask, Rabby, or Phantom wallet on **Monad Testnet**.
 2. **Get Testnet MON:** If your balance is 0, click **Get Testnet MON** to open the [Official Monad Faucet](https://faucet.monad.xyz).
 3. **Open Demo Campaign:** Navigate to **Campaigns** $\to$ select **Flood Relief 2026**.
-4. **Make a Live Donation:** Click **Donate MON** $\to$ select `0.05 MON` $\to$ confirm in your wallet.
-5. **View Transaction State:** Watch the real-time confirmation tracker update live from `Pending` to `Donation Verified ✓`.
-6. **Generate Impact Receipt:** Click **Generate Impact Receipt** to inspect your cryptographically verifiable impact certificate with real tx proof.
-7. **Follow The Money Flow:** Scroll down to the **Signature Money Flow** interactive visualizer to see how funds flow to audited vendor wallets (`0x892a...1014`, `0x28a1...05f2`).
+4. **Make a Live Donation:** Click **DONATE MON NOW** $\to$ select `0.05 MON` $\to$ confirm in your wallet.
+5. **View Real Blockchain Confirmation:** Watch the confirmation tracker update live from `1. Confirm in wallet...` to `2. Processing on Monad...` to `✓ Donation confirmed`.
+6. **Generate Impact Receipt:** Click **View Impact Receipt** to inspect your cryptographically verifiable impact certificate with real tx proof.
+7. **Follow The Money Flow:** Scroll down to the **Signature Money Flow** interactive pipeline to see how funds flow to audited vendor wallets with mandatory receipt proofs.
 8. **Inspect Monad Explorer:** Click **View on Monad Explorer** on any settled expense to verify the real on-chain transaction.
 
 ---
 
 ## 💻 Tech Stack
 
-- **Smart Contracts:** Solidity `^0.8.24`, Hardhat, Ethers.js
+- **Smart Contracts:** Solidity `^0.8.24`, Foundry & Hardhat, Ethers.js
 - **Frontend Framework:** Next.js 14 (App Router), React, TypeScript
-- **Styling & UI:** Tailwind CSS, Lucide Icons, Custom Dark Fintech Design System
+- **Styling & UI:** Tailwind CSS, Lucide Icons, Clean Bright Fintech Social-Impact Design System
 - **Web3 Integrations:** Viem, Wagmi v2, RainbowKit, TanStack Query
-- **Interactive Visualizations:** HTML5 Canvas / WebGL Particle Network Visualizer
-- **Storage / Off-Chain Metadata:** Supabase (with offline resilient local cache)
+- **Interactive Visualizations:** HTML5 Canvas WebGL Financial Flow Stream
+- **Evidence Storage:** Local Storage + Supabase Off-chain Receipt Storage
 
 ---
 
@@ -170,7 +170,11 @@ To deploy to Monad Testnet using Hardhat:
 npx hardhat run scripts/deploy.ts --network monadTestnet
 ```
 
-The script deploys `TraceDonate.sol`, initializes hackathon demo campaigns with test data, and exports the contract ABI and address to the frontend.
+Or using Foundry:
+
+```bash
+forge script contracts/script/DeployTraceDonate.s.sol:DeployTraceDonateScript --rpc-url https://testnet-rpc.monad.xyz --broadcast
+```
 
 ---
 
@@ -178,13 +182,13 @@ The script deploys `TraceDonate.sol`, initializes hackathon demo campaigns with 
 
 - [x] **Real Monad Blockchain:** Native Testnet (Chain ID 10143) with verified contract calls.
 - [x] **Smart Contract Escrow:** 100% of funds held in contract custody.
-- [x] **Direct Supplier Settlements:** Payments sent directly to vendor addresses with receipts.
+- [x] **Direct Supplier Settlements:** Payments sent directly to vendor addresses with mandatory receipt proofs.
 - [x] **"Follow My Money" UI:** Interactive visual pipeline from donor to supplier.
 - [x] **Digital Impact Receipts:** Cryptographically proven certificates with explorer links.
-- [x] **Automated Tests:** 12/12 passing test cases in Hardhat.
-- [x] **Premium Fintech Design:** Sleek dark charcoal aesthetic, zero AI-slop graphics.
-- [x] **Deploy Ready:** Next.js build passes cleanly for Vercel deployment.
+- [x] **Automated Tests:** 12/12 passing test cases in Hardhat and Foundry.
+- [x] **Premium Fintech Design:** Bright, warm, human, social-impact aesthetic.
+- [x] **Deploy Ready:** Next.js build passes cleanly for production deployment.
 
 ---
 
-**TraceDonate** — *Give with proof. Powered by Monad.*
+**TraceDonate** — *Every donation. Every payment. Every proof. Powered by Monad.*
