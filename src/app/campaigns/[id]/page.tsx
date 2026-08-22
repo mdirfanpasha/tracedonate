@@ -7,7 +7,7 @@ import { MONAD_EXPLORER_URL } from "@/config/contracts";
 import { MoneyFlowGraph } from "@/components/MoneyFlowGraph";
 import { DonationModal } from "@/components/DonationModal";
 import { ImpactReceiptModal } from "@/components/ImpactReceiptModal";
-import { useCampaignDetails } from "@/hooks/useTraceDonateContract";
+import { useCampaignDetails, useCampaignDonations } from "@/hooks/useTraceDonateContract";
 import { formatAddress } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -25,15 +25,17 @@ export default function CampaignDetailPage() {
   const campaignId = Number(params?.id) || 1;
 
   const { campaign, refetch: refetchCampaign } = useCampaignDetails(campaignId);
+  const donations = useCampaignDonations(campaignId);
 
   const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [lastDonationTx, setLastDonationTx] = useState("");
   const [lastDonationAmount, setLastDonationAmount] = useState("0.1");
 
-  const raised = parseFloat(campaign.totalRaised);
-  const goal = parseFloat(campaign.goal);
-  const percent = Math.min(100, Math.round((raised / (goal || 1)) * 100));
+  const raised = parseFloat(campaign.totalRaised) || 0;
+  const goal = parseFloat(campaign.goal) || 1;
+  const percent = Math.min(100, Math.round((raised / goal) * 100));
+  const remaining = Math.max(0, goal - raised).toFixed(3);
 
   const handleDonationSuccess = (hash: string, amount: string) => {
     setLastDonationTx(hash);
@@ -128,8 +130,8 @@ export default function CampaignDetailPage() {
               </div>
 
               <div className="flex justify-between text-xs text-slate-500 font-mono">
-                <span>{percent}% of target goal</span>
-                <span>128 verified donors</span>
+                <span>{percent}% of target ({remaining} MON left)</span>
+                <span>{donations.length} verified donor{donations.length === 1 ? "" : "s"}</span>
               </div>
             </div>
 
@@ -184,14 +186,36 @@ export default function CampaignDetailPage() {
               </a>
             </div>
           </div>
+
+          {/* Monad Chain Badge */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs font-mono">
+                MON
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-900">Monad Testnet Native</h4>
+                <p className="text-[11px] text-slate-500">Chain ID: 10143 • Instant Finality</p>
+              </div>
+            </div>
+            <a
+              href={MONAD_EXPLORER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-mono font-medium text-emerald-700 hover:underline flex items-center gap-1"
+            >
+              <span>Network</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </div>
       </div>
 
       {/* Donation Modal */}
       <DonationModal
+        campaign={campaign}
         isOpen={isDonationOpen}
         onClose={() => setIsDonationOpen(false)}
-        campaign={campaign}
         onSuccess={handleDonationSuccess}
       />
 

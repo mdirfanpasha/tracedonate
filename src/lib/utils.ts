@@ -17,13 +17,20 @@ export function formatMon(valueWei?: bigint | string | number, decimals = 3): st
   try {
     const weiBigInt = typeof valueWei === "bigint" ? valueWei : BigInt(valueWei.toString());
     const formatted = parseFloat(formatEther(weiBigInt));
-    return formatted.toLocaleString("en-US", {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    });
+    return isNaN(formatted) ? "0.000" : formatted.toFixed(decimals);
   } catch {
     return "0.000";
   }
+}
+
+export function getCategoryColor(category: string): string {
+  const c = category.toLowerCase();
+  if (c.includes("food")) return "text-emerald-700 bg-emerald-50 border-emerald-200";
+  if (c.includes("med") || c.includes("health")) return "text-blue-700 bg-blue-50 border-blue-200";
+  if (c.includes("water")) return "text-cyan-700 bg-cyan-50 border-cyan-200";
+  if (c.includes("transport") || c.includes("logistics")) return "text-purple-700 bg-purple-50 border-purple-200";
+  if (c.includes("shelter")) return "text-amber-700 bg-amber-50 border-amber-200";
+  return "text-slate-700 bg-slate-50 border-slate-200";
 }
 
 export function formatTimestamp(timestampInSeconds?: number): string {
@@ -58,20 +65,4 @@ export function getExplorerTxUrl(txHash?: string): string {
 export function getExplorerAddressUrl(address?: string): string {
   if (!address) return `${MONAD_EXPLORER_BASE}`;
   return `${MONAD_EXPLORER_BASE}/address/${address}`;
-}
-
-export const CATEGORY_COLORS: Record<string, string> = {
-  Food: "#00F5A0",
-  Medical: "#00D2FF",
-  Transport: "#F59E0B",
-  Equipment: "#A855F7",
-  Shelter: "#EC4899",
-  Logistics: "#6366F1",
-  "Clean Water": "#06B6D4",
-  Education: "#10B981",
-  Other: "#94A3B8",
-};
-
-export function getCategoryColor(category: string): string {
-  return CATEGORY_COLORS[category] || "#00F5A0";
 }

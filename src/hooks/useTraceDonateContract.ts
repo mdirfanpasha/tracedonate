@@ -13,7 +13,7 @@ const LOCAL_CAMPAIGNS_KEY = "tracedonate_local_campaigns";
 const LOCAL_EXPENSES_KEY = "tracedonate_local_expenses";
 const LOCAL_DONATIONS_KEY = "tracedonate_local_donations";
 
-// Initial authentic demo donations for campaigns
+// Initial authentic demo donations for campaigns (fallback only)
 const SEED_DONATIONS: Record<number, Donation[]> = {
   1: [
     {
@@ -105,7 +105,7 @@ export function recordLocalDonation(
   try {
     const added = parseFloat(amount) || 0;
 
-    // 1. Find the target campaign across local, seed, or create
+    // 1. Update local campaign
     const existingCampaigns = getLocalCampaigns();
     const seed = (SEED_CAMPAIGNS as unknown as Campaign[]).find((c) => c.id === campaignId);
     const target = existingCampaigns.find((c) => c.id === campaignId) || seed;
@@ -127,7 +127,7 @@ export function recordLocalDonation(
       saveLocalCampaign(updatedCampaign);
     }
 
-    // 2. Record in local donations list
+    // 2. Record donation
     const rawDonations = localStorage.getItem(LOCAL_DONATIONS_KEY);
     const donations: Donation[] = rawDonations ? JSON.parse(rawDonations) : [];
     const newDonation: Donation = {
@@ -211,6 +211,7 @@ export function useAllCampaigns() {
     functionName: "getAllCampaigns",
     query: {
       refetchInterval: 3000,
+      staleTime: 0,
     },
   });
 
@@ -230,13 +231,12 @@ export function useAllCampaigns() {
     } catch {}
   }, []);
 
-  // Listen to on-chain DonationReceived logs directly from Monad RPC
   useWatchContractEvent({
     address: TRACEDONATE_CONTRACT_ADDRESS,
     abi: TRACEDONATE_ABI,
     eventName: "DonationReceived",
     onLogs(logs) {
-      console.log("⚡ Monad On-Chain DonationReceived Event Log:", logs);
+      console.log("⚡ [useAllCampaigns] Monad on-chain DonationReceived:", logs);
       queryClient.invalidateQueries();
       setTick((t) => t + 1);
       refetch();
@@ -262,85 +262,59 @@ export function useAllCampaigns() {
       loadSupabase();
     }, 3000);
 
-    let channel: any = null;
-    if (supabase) {
-      try {
-        channel = supabase
-          .channel("realtime-campaigns")
-          .on("postgres_changes", { event: "*", schema: "public", table: "campaigns" }, () => {
-            loadSupabase();
-            window.dispatchEvent(new Event("tracedonate_update"));
-          })
-          .subscribe();
-      } catch {}
-    }
-
     return () => {
       window.removeEventListener("tracedonate_update", handleUpdate);
       window.removeEventListener("storage", handleUpdate);
       clearInterval(interval);
-      if (channel && supabase) {
-        supabase.removeChannel(channel);
-      }
     };
   }, [loadLocal, loadSupabase]);
 
   const allMap = new Map<number, Campaign>();
 
-  // 1. Initial Seed campaigns
+  // 1. Initial Seed campaigns (fallback only)
   (SEED_CAMPAIGNS as unknown as Campaign[]).forEach((c) => allMap.set(c.id, c));
 
   // 2. Supabase campaigns
   supabaseCampaigns.forEach((c) => allMap.set(c.id, c));
 
-  // 3. Locally created / saved campaigns (includes recent local donations)
-  localCampaigns.forEach((c) => {
-    const existing = allMap.get(c.id);
-    allMap.set(c.id, {
-      ...c,
-      totalRaised: c.totalRaised || existing?.totalRaised || "0.000",
-      currentBalance: c.currentBalance || existing?.currentBalance || "0.000",
-    });
-  });
+  // 3. Local created campaigns
+  localCampaigns.forEach((c) => allMap.set(c.id, c));
 
-  // 4. Smart contract campaigns on Monad
-  if (Array.isArray(data)) {
+  // 4. Smart contract campaigns on Monad (AUTHORITATIVE SOURCE OF TRUTH)
+  if (Array.isArray(data) && data.length > 0) {
     data.forEach((c: any) => {
-      const id = Number(c.id);
+      const id = Number(c.id ?? c[0]);
       if (id > 0) {
-        const existing = allMap.get(id);
         const localExps = getLocalExpenses(id);
+        const existing = allMap.get(id);
         const seedExps = existing?.expenses || [];
         const combinedExps = [
           ...localExps,
           ...seedExps.filter((se) => !localExps.some((le) => le.id === se.id)),
         ];
 
-        const onChainRaised = parseFloat(formatMon(c.totalRaised));
-        const currentRaised = parseFloat(existing?.totalRaised || "0");
-        const finalRaised = Math.max(onChainRaised, currentRaised).toFixed(3);
-
-        const onChainBal = parseFloat(formatMon(c.currentBalance));
-        const currentBal = parseFloat(existing?.currentBalance || "0");
-        const finalBal = Math.max(onChainBal, currentBal).toFixed(3);
+        const goalWei = BigInt(c.goal ?? c[4] ?? 0n);
+        const raisedWei = BigInt(c.totalRaised ?? c[5] ?? 0n);
+        const balWei = BigInt(c.currentBalance ?? c[6] ?? 0n);
+        const spentWei = BigInt(c.totalSpent ?? c[7] ?? 0n);
 
         allMap.set(id, {
           id,
-          organization: c.organization,
-          title: c.title || existing?.title || `Campaign #${id}`,
-          description: c.description || existing?.description || "",
-          goal: formatMon(c.goal),
-          goalWei: BigInt(c.goal),
-          totalRaised: finalRaised,
-          totalRaisedWei: parseEther(finalRaised),
-          currentBalance: finalBal,
-          currentBalanceWei: parseEther(finalBal),
-          totalSpent: formatMon(c.totalSpent),
-          totalSpentWei: BigInt(c.totalSpent),
-          category: c.category || existing?.category || "General Relief",
-          imageUri: c.imageUri || existing?.imageUri || "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80",
-          active: Boolean(c.active),
-          createdAt: Number(c.createdAt),
+          organization: (c.organization ?? c[1]) as `0x${string}`,
+          title: String(c.title ?? c[2] ?? existing?.title ?? `Campaign #${id}`),
+          description: String(c.description ?? c[3] ?? existing?.description ?? ""),
+          goal: formatMon(goalWei),
+          goalWei: goalWei,
+          totalRaised: formatMon(raisedWei),
+          totalRaisedWei: raisedWei,
+          currentBalance: formatMon(balWei),
+          currentBalanceWei: balWei,
+          totalSpent: formatMon(spentWei),
+          totalSpentWei: spentWei,
+          category: String(c.category ?? c[8] ?? existing?.category ?? "General Relief"),
+          imageUri: String(c.imageUri ?? c[9] ?? existing?.imageUri ?? "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80"),
+          active: Boolean(c.active ?? c[10] ?? true),
+          createdAt: Number(c.createdAt ?? c[11] ?? 0),
           expenses: combinedExps,
         });
       }
@@ -368,23 +342,48 @@ export function useCampaignDetails(campaignId: number) {
   const [tick, setTick] = useState(0);
   const { campaigns, refetch: refetchAll } = useAllCampaigns();
 
-  const { data: campaignRaw, isLoading: isCampaignLoading, refetch: refetchCampaign } = useReadContract({
+  const {
+    data: campaignRaw,
+    isLoading: isCampaignLoading,
+    refetch: refetchCampaign,
+  } = useReadContract({
     address: TRACEDONATE_CONTRACT_ADDRESS,
     abi: TRACEDONATE_ABI,
     functionName: "getCampaign",
     args: [BigInt(campaignId)],
     query: {
       refetchInterval: 3000,
+      staleTime: 0,
     },
   });
 
-  const { data: expensesRaw, isLoading: isExpensesLoading, refetch: refetchExpenses } = useReadContract({
+  const {
+    data: expensesRaw,
+    isLoading: isExpensesLoading,
+    refetch: refetchExpenses,
+  } = useReadContract({
     address: TRACEDONATE_CONTRACT_ADDRESS,
     abi: TRACEDONATE_ABI,
     functionName: "getCampaignExpenses",
     args: [BigInt(campaignId)],
     query: {
       refetchInterval: 3000,
+      staleTime: 0,
+    },
+  });
+
+  // Real-time on-chain event watcher directly from Monad RPC
+  useWatchContractEvent({
+    address: TRACEDONATE_CONTRACT_ADDRESS,
+    abi: TRACEDONATE_ABI,
+    eventName: "DonationReceived",
+    onLogs(logs) {
+      console.log("⚡ [useCampaignDetails] Monad on-chain DonationReceived:", logs);
+      queryClient.invalidateQueries();
+      refetchCampaign();
+      refetchExpenses();
+      refetchAll();
+      setTick((t) => t + 1);
     },
   });
 
@@ -403,6 +402,10 @@ export function useCampaignDetails(campaignId: number) {
 
     const handleUpdate = () => {
       loadLocalState();
+      queryClient.invalidateQueries();
+      refetchCampaign();
+      refetchExpenses();
+      refetchAll();
       setTick((t) => t + 1);
     };
 
@@ -415,59 +418,90 @@ export function useCampaignDetails(campaignId: number) {
       window.removeEventListener("storage", handleUpdate);
       clearInterval(interval);
     };
-  }, [loadLocalState]);
+  }, [loadLocalState, queryClient, refetchCampaign, refetchExpenses, refetchAll]);
 
-  const matchedFromAll = campaigns.find((c) => c.id === campaignId);
+  const isOnChain = Boolean(
+    campaignRaw &&
+    ((campaignRaw as any).id !== undefined || Array.isArray(campaignRaw)) &&
+    Number((campaignRaw as any).id || (campaignRaw as any)[0] || 0) > 0
+  );
 
-  const seedFallback =
-    localCampaign ||
-    matchedFromAll ||
-    getLocalCampaigns().find((c) => c.id === campaignId) ||
-    SEED_CAMPAIGNS.find((c) => c.id === campaignId) ||
-    SEED_CAMPAIGNS[0];
+  let campaign: Campaign;
 
   const onChainExpenses: Expense[] = Array.isArray(expensesRaw)
     ? expensesRaw.map((e: any) => ({
-        id: Number(e.id),
-        campaignId: Number(e.campaignId),
-        amount: formatMon(e.amount),
-        amountWei: BigInt(e.amount),
-        recipientSupplier: e.recipientSupplier,
-        category: e.category,
-        description: e.description,
-        evidenceHash: e.evidenceHash,
-        status: e.status === 3 ? "Executed" : e.status === 1 ? "Approved" : e.status === 2 ? "Rejected" : "Pending",
-        createdAt: Number(e.createdAt),
-        executedAt: Number(e.executedAt),
+        id: Number(e.id ?? e[0]),
+        campaignId: Number(e.campaignId ?? e[1]),
+        amount: formatMon(e.amount ?? e[2]),
+        amountWei: BigInt(e.amount ?? e[2] ?? 0n),
+        recipientSupplier: (e.recipientSupplier ?? e[3]) as `0x${string}`,
+        category: String(e.category ?? e[4] ?? "General"),
+        description: String(e.description ?? e[5] ?? ""),
+        evidenceHash: String(e.evidenceHash ?? e[6] ?? ""),
+        status: (e.status === 3 || e[7] === 3) ? "Executed" : (e.status === 1 || e[7] === 1) ? "Approved" : (e.status === 2 || e[7] === 2) ? "Rejected" : "Pending",
+        createdAt: Number(e.createdAt ?? e[8] ?? 0),
+        executedAt: Number(e.executedAt ?? e[9] ?? 0),
       }))
-    : (seedFallback.expenses as unknown as Expense[]) || [];
+    : [];
 
   const mergedExpenses = [
     ...localExpenses.filter((le) => !onChainExpenses.some((oe) => oe.id === le.id)),
     ...onChainExpenses,
   ];
 
-  const onChainRaised = campaignRaw && (campaignRaw as any).id ? parseFloat(formatMon((campaignRaw as any).totalRaised)) : 0;
-  const currentRaised = parseFloat(seedFallback.totalRaised || "0");
-  const finalRaised = Math.max(onChainRaised, currentRaised).toFixed(3);
+  if (isOnChain) {
+    const raw = campaignRaw as any;
+    const cId = Number(raw.id ?? raw[0]);
+    const cOrg = (raw.organization ?? raw[1]) as `0x${string}`;
+    const cTitle = String(raw.title ?? raw[2] ?? `Campaign #${cId}`);
+    const cDesc = String(raw.description ?? raw[3] ?? "");
+    const cGoalWei = BigInt(raw.goal ?? raw[4] ?? 0n);
+    const cRaisedWei = BigInt(raw.totalRaised ?? raw[5] ?? 0n);
+    const cBalanceWei = BigInt(raw.currentBalance ?? raw[6] ?? 0n);
+    const cSpentWei = BigInt(raw.totalSpent ?? raw[7] ?? 0n);
+    const cCat = String(raw.category ?? raw[8] ?? "General Relief");
+    const cImg = String(raw.imageUri ?? raw[9] ?? "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80");
+    const cActive = Boolean(raw.active ?? raw[10] ?? true);
+    const cCreatedAt = Number(raw.createdAt ?? raw[11] ?? 0);
 
-  const onChainBal = campaignRaw && (campaignRaw as any).id ? parseFloat(formatMon((campaignRaw as any).currentBalance)) : 0;
-  const currentBal = parseFloat(seedFallback.currentBalance || "0");
-  const finalBal = Math.max(onChainBal, currentBal).toFixed(3);
+    // EXACT ON-CHAIN VALUES FROM MONAD CONTRACT
+    campaign = {
+      id: cId,
+      organization: cOrg,
+      title: cTitle,
+      description: cDesc,
+      goal: formatMon(cGoalWei),
+      goalWei: cGoalWei,
+      totalRaised: formatMon(cRaisedWei),
+      totalRaisedWei: cRaisedWei,
+      currentBalance: formatMon(cBalanceWei),
+      currentBalanceWei: cBalanceWei,
+      totalSpent: formatMon(cSpentWei),
+      totalSpentWei: cSpentWei,
+      category: cCat,
+      imageUri: cImg,
+      active: cActive,
+      createdAt: cCreatedAt,
+      expenses: mergedExpenses,
+    };
+  } else {
+    // Only fall back to local/seed if on-chain contract has not loaded yet
+    const local = getLocalCampaigns().find((c) => c.id === campaignId);
+    const fromAll = campaigns.find((c) => c.id === campaignId);
+    const seed = SEED_CAMPAIGNS.find((c) => c.id === campaignId) || SEED_CAMPAIGNS[0];
+    const fallback = local || fromAll || seed;
 
-  const campaign: Campaign = {
-    ...(seedFallback as unknown as Campaign),
-    id: campaignId,
-    totalRaised: finalRaised,
-    totalRaisedWei: parseEther(finalRaised),
-    currentBalance: finalBal,
-    currentBalanceWei: parseEther(finalBal),
-    expenses: mergedExpenses.length > 0 ? mergedExpenses : (seedFallback.expenses as unknown as Expense[]),
-  };
+    campaign = {
+      ...(fallback as unknown as Campaign),
+      id: campaignId,
+      expenses: mergedExpenses.length > 0 ? mergedExpenses : (fallback.expenses as unknown as Expense[]),
+    };
+  }
 
   return {
     campaign,
     isLoading: isCampaignLoading || isExpensesLoading,
+    isOnChain,
     refetch: () => {
       loadLocalState();
       queryClient.invalidateQueries();
@@ -533,8 +567,19 @@ export function useDonorHistory(donorAddress?: string) {
     args: donorAddress ? [donorAddress as `0x${string}`] : undefined,
     query: {
       refetchInterval: 3000,
+      staleTime: 0,
     },
   });
+
+  const onChainDonations: Donation[] = Array.isArray(donationsRaw)
+    ? donationsRaw.map((d: any) => ({
+        campaignId: Number(d.campaignId ?? d[0]),
+        donor: (d.donor ?? d[1]) as `0x${string}`,
+        amount: formatMon(d.amount ?? d[2]),
+        amountWei: BigInt(d.amount ?? d[2] ?? 0n),
+        timestamp: Number(d.timestamp ?? d[3] ?? 0),
+      }))
+    : [];
 
   const [localDonations, setLocalDonations] = useState<Donation[]>([]);
 
@@ -565,17 +610,10 @@ export function useDonorHistory(donorAddress?: string) {
     };
   }, [loadLocalDonations]);
 
-  const onChainDonations: Donation[] = Array.isArray(donationsRaw)
-    ? donationsRaw.map((d: any) => ({
-        campaignId: Number(d.campaignId),
-        donor: d.donor,
-        amount: formatMon(d.amount),
-        amountWei: BigInt(d.amount),
-        timestamp: Number(d.timestamp),
-      }))
-    : [];
-
-  const mergedDonations = [...localDonations, ...onChainDonations];
+  const mergedDonations = [
+    ...onChainDonations,
+    ...localDonations.filter((ld) => !onChainDonations.some((od) => od.timestamp === ld.timestamp && od.campaignId === ld.campaignId)),
+  ];
 
   return {
     donations: mergedDonations,
@@ -598,6 +636,7 @@ export function useGlobalStats() {
     functionName: "getGlobalStats",
     query: {
       refetchInterval: 3000,
+      staleTime: 0,
     },
   });
 
