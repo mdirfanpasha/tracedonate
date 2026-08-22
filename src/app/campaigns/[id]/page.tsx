@@ -18,6 +18,8 @@ import {
   Lock,
   CheckCircle2,
   HeartHandshake,
+  Home,
+  Layers,
 } from "lucide-react";
 
 export default function CampaignDetailPage() {
@@ -45,15 +47,39 @@ export default function CampaignDetailPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-8">
-      {/* Back Navigation */}
-      <Link
-        href="/campaigns"
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>Back to Campaigns</span>
-      </Link>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      {/* Back Navigation Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+          <Link
+            href="/"
+            className="hover:text-emerald-700 transition-colors flex items-center gap-1 cursor-pointer font-semibold"
+          >
+            <Home className="w-3.5 h-3.5" />
+            <span>Home</span>
+          </Link>
+          <span className="text-slate-300">/</span>
+          <Link
+            href="/campaigns"
+            className="hover:text-emerald-700 transition-colors flex items-center gap-1 cursor-pointer font-semibold"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Campaigns</span>
+          </Link>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-900 font-bold truncate max-w-[180px] sm:max-w-sm">
+            {campaign.title}
+          </span>
+        </div>
+
+        <Link
+          href="/campaigns"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer shadow-2xs"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Campaigns</span>
+        </Link>
+      </div>
 
       {/* Two Column Layout on Desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -154,7 +180,7 @@ export default function CampaignDetailPage() {
             {/* Primary Action Button */}
             <button
               onClick={() => setIsDonationOpen(true)}
-              className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-md shadow-emerald-600/10"
+              className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-md shadow-emerald-600/10 cursor-pointer"
             >
               <Coins className="w-4 h-4" />
               <span>DONATE MON NOW</span>
@@ -163,7 +189,7 @@ export default function CampaignDetailPage() {
             {/* Secondary Action */}
             <a
               href="#follow-the-money"
-              className="w-full py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs transition-colors flex items-center justify-center gap-1.5"
+              className="w-full py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>Follow the Money Trail</span>

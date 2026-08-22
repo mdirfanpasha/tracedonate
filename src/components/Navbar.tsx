@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { MONAD_TESTNET_CHAIN_ID } from "@/config/contracts";
-import { ShieldCheck, Menu, X, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Menu, X, AlertTriangle, Home, Layers, Building2, Heart, Activity } from "lucide-react";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -18,9 +18,11 @@ export function Navbar() {
   const isWrongNetwork = isConnected && chainId !== MONAD_TESTNET_CHAIN_ID;
 
   const navLinks = [
-    { href: "/campaigns", label: "Campaigns" },
-    { href: "/dashboard/donor", label: "My Donations" },
-    { href: "/#how-it-works", label: "How It Works" },
+    { href: "/", label: "Home", icon: Home },
+    { href: "/campaigns", label: "Campaigns", icon: Layers },
+    { href: "/dashboard/org", label: "Org Console", icon: Building2 },
+    { href: "/dashboard/donor", label: "My Donations", icon: Heart },
+    { href: "/transparency", label: "Transparency", icon: Activity },
   ];
 
   return (
@@ -31,8 +33,9 @@ export function Navbar() {
           <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
           <span>Please switch to Monad Testnet to interact with smart contracts.</span>
           <button
+            type="button"
             onClick={() => switchChain({ chainId: MONAD_TESTNET_CHAIN_ID })}
-            className="ml-2 px-2.5 py-0.5 rounded-md bg-amber-600 text-white font-medium hover:bg-amber-700 transition-colors"
+            className="ml-2 px-2.5 py-0.5 rounded-md bg-amber-600 text-white font-medium hover:bg-amber-700 transition-colors cursor-pointer"
           >
             Switch to Monad
           </button>
@@ -42,7 +45,7 @@ export function Navbar() {
       <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
+          <Link href="/" className="flex items-center gap-2.5 group cursor-pointer">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center group-hover:border-emerald-500 transition-colors">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
             </div>
@@ -57,17 +60,17 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => {
-              const isActive = pathname === link.href;
+              const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
               return (
                 <Link
                   key={link.label}
                   href={link.href}
-                  className={`text-sm font-medium transition-colors ${
+                  className={`text-xs font-semibold transition-colors px-2.5 py-1.5 rounded-lg cursor-pointer ${
                     isActive
-                      ? "text-emerald-600 font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                   }`}
                 >
                   {link.label}
@@ -107,7 +110,7 @@ export function Navbar() {
                           <button
                             onClick={openConnectModal}
                             type="button"
-                            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+                            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
                           >
                             Connect Wallet
                           </button>
@@ -119,7 +122,7 @@ export function Navbar() {
                           <button
                             onClick={openChainModal}
                             type="button"
-                            className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-medium hover:bg-red-100 transition-colors"
+                            className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-medium hover:bg-red-100 transition-colors cursor-pointer"
                           >
                             Wrong Network
                           </button>
@@ -131,7 +134,7 @@ export function Navbar() {
                           <button
                             onClick={openChainModal}
                             type="button"
-                            className="px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1.5 cursor-pointer"
                           >
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span>{chain.name || "Monad"}</span>
@@ -140,7 +143,7 @@ export function Navbar() {
                           <button
                             onClick={openAccountModal}
                             type="button"
-                            className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-mono font-medium text-slate-900 hover:bg-slate-50 transition-colors shadow-sm"
+                            className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-mono font-medium text-slate-900 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                           >
                             {account.displayName}
                           </button>
@@ -156,8 +159,9 @@ export function Navbar() {
           {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 md:hidden">
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:text-slate-900"
+              className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:text-slate-900 cursor-pointer"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -168,17 +172,26 @@ export function Navbar() {
         {/* Mobile Drawer */}
         {mobileMenuOpen && (
           <div className="md:hidden border-b border-slate-200 bg-white px-4 pt-3 pb-6 space-y-4">
-            <nav className="flex flex-col space-y-3">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-medium text-slate-700 hover:text-emerald-600 py-1"
-                >
-                  {link.label}
-                </Link>
-              ))}
+            <nav className="flex flex-col space-y-2">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                const Icon = link.icon;
+                return (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+                      isActive
+                        ? "bg-emerald-50 text-emerald-700 font-semibold"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
             </nav>
 
             <div className="pt-3 border-t border-slate-100">
