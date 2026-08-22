@@ -10,14 +10,16 @@
 - **Live Public Website:** [https://tracedonate.vercel.app](https://tracedonate.vercel.app)
 - **Monad Contract Address:** [`0x892a23381A17f223a4d9693B980C6563f82c1014`](https://testnet.monadvision.com/address/0x892a23381A17f223a4d9693B980C6563f82c1014)
 - **Monad Network:** Monad Testnet (Chain ID: `10143`)
-- **Block Explorer:** [MonadVision](https://testnet.monadvision.com) / [MonadScan](https://testnet.monadscan.com)
+- **RPC Endpoint:** `https://testnet-rpc.monad.xyz`
+- **Block Explorers:** [MonadVision](https://testnet.monadvision.com) / [MonadScan](https://testnet.monadscan.com)
 - **Official Monad Faucet:** [https://faucet.monad.xyz](https://faucet.monad.xyz)
+- **GitHub Repository:** [https://github.com/mdirfanpasha/tracedonate](https://github.com/mdirfanpasha/tracedonate)
 
 ---
 
 ## 🚨 The Problem
 
-When donors give money to traditional charities, their contribution disappears into an opaque organizational account. Donors are forced to trust generic annual reports published months later with zero verification. Fraud, bureaucratic overhead, and embezzlement continually undermine global philanthropy.
+When donors give money to traditional charities, their contribution disappears into an opaque organizational bank account. Donors are forced to trust generic annual reports published months later with zero mathematical verification. Fraud, excessive administrative overhead, and embezzlement continually undermine global humanitarian aid.
 
 ---
 
@@ -27,9 +29,148 @@ When donors give money to traditional charities, their contribution disappears i
 
 1. **Funds Held in Escrow:** Organizations cannot withdraw lump sums into private accounts.
 2. **Itemized Expense Requests:** Organizations submit spending requests specifying the vendor's wallet address, category, and attached mandatory receipt proof.
-3. **Verifier Audit:** Auditors review invoice legitimacy and authorize payment.
+3. **Verifier Audit:** Authorized verifiers review invoice legitimacy and authorize payment.
 4. **Direct Settlement:** The smart contract transfers native `MON` tokens **directly to the supplier/vendor wallet**.
 5. **Follow Your Money:** Donors inspect a live interactive financial pipeline linking their donation to verified vendor payouts with real Monad explorer transaction hashes.
+
+---
+
+## 📜 Smart Contract Architecture (`TraceDonate.sol`)
+
+The core financial logic is implemented in [`contracts/src/TraceDonate.sol`](contracts/src/TraceDonate.sol). The contract acts as a trustless financial custodian ensuring funds can only leave the contract when sent directly to verified suppliers.
+
+### 📐 Data Structures
+
+```solidity
+enum ExpenseStatus { Pending, Approved, Rejected, Executed }
+
+struct Campaign {
+    uint256 id;
+    address payable organization;
+    string title;
+    string description;
+    uint256 goal;            // in wei
+    uint256 totalRaised;     // in wei
+    uint256 currentBalance;  // in wei (available in escrow)
+    uint256 totalSpent;      // in wei
+    string category;
+    string imageUri;
+    bool active;
+    uint256 createdAt;
+}
+
+struct Expense {
+    uint256 id;
+    uint256 campaignId;
+    uint256 amount;          // in wei
+    address payable recipientSupplier;
+    string category;
+    string description;
+    string evidenceHash;     // IPFS hash / receipt reference
+    ExpenseStatus status;
+    uint256 createdAt;
+    uint256 executedAt;
+}
+
+struct Donation {
+    uint256 campaignId;
+    address donor;
+    uint256 amount;
+    uint256 timestamp;
+}
+```
+
+---
+
+### ⚙️ Core Smart Contract Functions
+
+#### 1. Campaign Creation
+```solidity
+function createCampaign(
+    string memory title,
+    string memory description,
+    uint256 goal,
+    string memory category,
+    string memory imageUri
+) external returns (uint256)
+```
+- **Access:** Public. Anyone can deploy a transparent campaign.
+- **Rules:** `goal` must be $> 0$.
+- **Emits:** `event CampaignCreated(uint256 indexed campaignId, address indexed organization, string title, uint256 goal, string category, uint256 timestamp)`
+
+#### 2. Escrow Donation
+```solidity
+function donate(uint256 campaignId) external payable nonReentrant
+```
+- **Access:** Public.
+- **Rules:** `msg.value > 0`, campaign must exist and be active.
+- **Escrow Invariant:** `msg.value` is locked in contract balance; `campaign.totalRaised` and `campaign.currentBalance` are credited.
+- **Emits:** `event DonationReceived(uint256 indexed campaignId, address indexed donor, uint256 amount, uint256 currentBalance, uint256 timestamp)`
+
+#### 3. Expense Creation
+```solidity
+function createExpense(
+    uint256 campaignId,
+    uint256 amount,
+    address payable recipientSupplier,
+    string memory category,
+    string memory description,
+    string memory evidenceHash
+) external returns (uint256)
+```
+- **Access:** Only the campaign organizer (`onlyCampaignOrg`).
+- **Rules:** `amount <= campaign.currentBalance`, `recipientSupplier != address(0)`.
+- **Emits:** `event ExpenseCreated(uint256 indexed campaignId, uint256 indexed expenseId, address indexed recipientSupplier, uint256 amount, string category, string evidenceHash, uint256 timestamp)`
+
+#### 4. Verifier Audit & Direct Payout Execution
+```solidity
+function approveAndExecuteExpense(uint256 expenseId) external onlyVerifierOrOwner nonReentrant
+```
+- **Access:** Only authorized verifiers or contract owner.
+- **Execution Invariant:** Smart contract transfers exact `amount` directly to `recipientSupplier.transfer(amount)`.
+- **Accounting:** `campaign.currentBalance -= amount`, `campaign.totalSpent += amount`, `expense.status = Executed`.
+- **Double Execution Protection:** Reverts if `expense.status != Pending`.
+- **Emits:** `event ExpenseApproved(...)` & `event ExpenseExecuted(...)`
+
+#### 5. View & Retrieval Functions
+- `getCampaign(uint256 campaignId)` $\to$ Returns full campaign struct.
+- `getAllCampaigns()` $\to$ Returns array of all campaigns on-chain.
+- `getCampaignExpenses(uint256 campaignId)` $\to$ Returns all itemized expenses for a campaign.
+- `getDonorDonations(address donor)` $\to$ Returns donation history for a donor address.
+- `getGlobalStats()` $\to$ Returns total campaigns, total donated, and total spent across all campaigns.
+
+---
+
+## 💻 Interacting with the Smart Contract
+
+### A. Via Foundry / Cast CLI
+
+```bash
+# 1. Read all campaigns on Monad Testnet
+cast call 0x892a23381A17f223a4d9693B980C6563f82c1014 "getAllCampaigns()" --rpc-url https://testnet-rpc.monad.xyz
+
+# 2. Inspect escrow balance of the contract
+cast balance 0x892a23381A17f223a4d9693B980C6563f82c1014 --rpc-url https://testnet-rpc.monad.xyz
+
+# 3. Donate 0.05 MON to Campaign #1
+cast send 0x892a23381A17f223a4d9693B980C6563f82c1014 "donate(uint256)" 1 --value 0.05ether --rpc-url https://testnet-rpc.monad.xyz --private-key $YOUR_PRIVATE_KEY
+```
+
+### B. Via Viem / Wagmi TypeScript
+
+```typescript
+import { parseEther } from "viem";
+import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
+
+// Donate 0.1 MON
+await walletClient.writeContract({
+  address: TRACEDONATE_CONTRACT_ADDRESS,
+  abi: TRACEDONATE_ABI,
+  functionName: "donate",
+  args: [1n],
+  value: parseEther("0.1"),
+});
+```
 
 ---
 
@@ -106,8 +247,8 @@ Itemized micro-expense tracking requires recording every food bundle, medical ki
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-org/trace-donate.git
-cd trace-donate
+git clone https://github.com/mdirfanpasha/tracedonate.git
+cd tracedonate
 ```
 
 ### 2. Install dependencies
