@@ -1,5 +1,7 @@
-export const TRACEDONATE_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-  "0x892A23381a17f223A4D9693B980c6563F82C1014") as `0x${string}`;
+import { getAddress } from "viem";
+
+const rawContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x892a23381A17f223a4d9693B980C6563f82c1014";
+export const TRACEDONATE_CONTRACT_ADDRESS = getAddress(rawContractAddress.trim());
 
 export const MONAD_TESTNET_CHAIN_ID = 10143;
 export const MONAD_EXPLORER_URL = "https://testnet.monadvision.com";

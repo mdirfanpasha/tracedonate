@@ -8,7 +8,7 @@
 ## 🌟 Live Application & Contract Links
 
 - **Live Public Website:** [https://trace-donate.vercel.app](https://trace-donate.vercel.app) *(Deploy-ready Next.js app)*
-- **Monad Contract Address:** [`0x892A23381a17f223A4D9693B980c6563F82C1014`](https://testnet.monadvision.com/address/0x892A23381a17f223A4D9693B980c6563F82C1014)
+- **Monad Contract Address:** [`0x892a23381A17f223a4d9693B980C6563f82c1014`](https://testnet.monadvision.com/address/0x892a23381A17f223a4d9693B980C6563f82c1014)
 - **Monad Network:** Monad Testnet (Chain ID: `10143`)
 - **Block Explorer:** [MonadVision](https://testnet.monadvision.com) / [MonadScan](https://testnet.monadscan.com)
 - **Official Monad Faucet:** [https://faucet.monad.xyz](https://faucet.monad.xyz)
@@ -136,7 +136,7 @@ Create a `.env.local` file from the provided `.env.example`:
 ```env
 # Monad Testnet Configuration
 NEXT_PUBLIC_MONAD_RPC_URL="https://testnet-rpc.monad.xyz"
-NEXT_PUBLIC_CONTRACT_ADDRESS="0x892A23381a17f223A4D9693B980c6563F82C1014"
+NEXT_PUBLIC_CONTRACT_ADDRESS="0x892a23381A17f223a4d9693B980C6563f82c1014"
 NEXT_PUBLIC_CHAIN_ID=10143
 
 # Reown / WalletConnect ID
