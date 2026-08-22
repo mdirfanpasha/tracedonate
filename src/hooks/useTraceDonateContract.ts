@@ -5,6 +5,7 @@ import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI, SEED_CAMPAIGNS } from "@
 import { Campaign, Expense, Donation } from "@/lib/types";
 import { formatMon } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
+import { syncCampaignToSupabase, fetchSupabaseCampaigns } from "@/lib/supabase";
 
 const LOCAL_CAMPAIGNS_KEY = "tracedonate_local_campaigns";
 const LOCAL_EXPENSES_KEY = "tracedonate_local_expenses";
@@ -26,6 +27,7 @@ export function saveLocalCampaign(campaign: Campaign) {
     const updated = [campaign, ...existing.filter((c) => c.id !== campaign.id)];
     localStorage.setItem(LOCAL_CAMPAIGNS_KEY, JSON.stringify(updated));
     window.dispatchEvent(new Event("tracedonate_update"));
+    syncCampaignToSupabase(campaign);
   } catch (e) {
     console.warn("Failed to save local campaign:", e);
   }
@@ -64,31 +66,45 @@ export function useAllCampaigns() {
   });
 
   const [localCampaigns, setLocalCampaigns] = useState<Campaign[]>([]);
+  const [supabaseCampaigns, setSupabaseCampaigns] = useState<Campaign[]>([]);
 
   const loadLocal = useCallback(() => {
     setLocalCampaigns(getLocalCampaigns());
   }, []);
 
+  const loadSupabase = useCallback(async () => {
+    try {
+      const remote = await fetchSupabaseCampaigns();
+      if (remote.length > 0) {
+        setSupabaseCampaigns(remote);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     loadLocal();
+    loadSupabase();
     window.addEventListener("tracedonate_update", loadLocal);
     window.addEventListener("storage", loadLocal);
     return () => {
       window.removeEventListener("tracedonate_update", loadLocal);
       window.removeEventListener("storage", loadLocal);
     };
-  }, [loadLocal]);
+  }, [loadLocal, loadSupabase]);
 
-  // Combine onChain campaigns + SEED campaigns + Local campaigns (deduplicated by ID)
+  // Combine onChain campaigns + SEED campaigns + Local campaigns + Supabase campaigns (deduplicated by ID)
   const allMap = new Map<number, Campaign>();
 
   // 1. Initial Seed campaigns
   (SEED_CAMPAIGNS as unknown as Campaign[]).forEach((c) => allMap.set(c.id, c));
 
-  // 2. Locally created / saved campaigns
+  // 2. Supabase campaigns
+  supabaseCampaigns.forEach((c) => allMap.set(c.id, c));
+
+  // 3. Locally created / saved campaigns
   localCampaigns.forEach((c) => allMap.set(c.id, c));
 
-  // 3. Smart contract campaigns on Monad (highest precedence)
+  // 4. Smart contract campaigns on Monad (highest precedence)
   if (Array.isArray(data)) {
     data.forEach((c: any) => {
       const id = Number(c.id);
@@ -125,6 +141,7 @@ export function useAllCampaigns() {
     isLoading,
     refetch: () => {
       loadLocal();
+      loadSupabase();
       refetch();
     },
     error,

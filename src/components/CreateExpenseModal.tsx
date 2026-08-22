@@ -5,7 +5,7 @@ import { Campaign } from "@/lib/types";
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { parseEther } from "viem";
-import { saveEvidenceForExpense } from "@/lib/supabase";
+import { saveEvidenceForExpense, uploadReceiptFileToSupabase } from "@/lib/supabase";
 import { saveLocalExpense } from "@/hooks/useTraceDonateContract";
 import { TransactionBadge } from "./TransactionBadge";
 import {
@@ -45,6 +45,7 @@ export function CreateExpenseModal({
   const [supplierName, setSupplierName] = useState("");
 
   // Receipt / Proof Photo State
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPhotoPreview, setReceiptPhotoPreview] = useState<string>("");
   const [receiptFileName, setReceiptFileName] = useState<string>("");
   const [receiptError, setReceiptError] = useState<string>("");
@@ -70,6 +71,7 @@ export function CreateExpenseModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setReceiptFile(file);
     setReceiptFileName(file.name);
     setReceiptError("");
 
@@ -93,17 +95,29 @@ export function CreateExpenseModal({
 
     const newExpenseId = Date.now();
     const evidenceHash = `ipfs://bafybeicb${Math.random().toString(36).substring(2, 9)}/${receiptFileName || "invoice.jpg"}`;
-    const photoUrl = receiptPhotoPreview || "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1000&q=80";
+    
+    // Attempt Supabase storage upload if file exists
+    let publicFileUrl = receiptPhotoPreview || "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1000&q=80";
+    if (receiptFile) {
+      try {
+        const uploadedUrl = await uploadReceiptFileToSupabase(receiptFile);
+        if (uploadedUrl) {
+          publicFileUrl = uploadedUrl;
+        }
+      } catch (err) {
+        console.warn("Supabase background storage notice:", err);
+      }
+    }
 
-    // Save off-chain evidence with image data
+    // Save off-chain evidence with Supabase & local storage
     saveEvidenceForExpense(newExpenseId, {
       expenseId: newExpenseId,
       invoiceNumber: invoiceNumber || "INV-" + Math.floor(1000 + Math.random() * 9000),
       supplierName: supplierName || "Verified Vendor Partner",
-      fileUrl: photoUrl,
+      fileUrl: publicFileUrl,
       fileName: receiptFileName || "vendor_invoice.jpg",
       notes: description,
-      imageData: photoUrl,
+      imageData: receiptPhotoPreview || publicFileUrl,
     });
 
     // Save local expense for immediate visibility
@@ -146,6 +160,7 @@ export function CreateExpenseModal({
 
   const handleModalClose = () => {
     resetWrite();
+    setReceiptFile(null);
     setReceiptPhotoPreview("");
     setReceiptFileName("");
     setReceiptError("");
@@ -191,7 +206,7 @@ export function CreateExpenseModal({
                 Expense & Receipt Recorded
               </h4>
               <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                The expenditure request and receipt proof have been submitted to Monad for verifier audit.
+                The expenditure request and receipt proof have been submitted to Monad and synced with Supabase for audit.
               </p>
             </div>
 
@@ -250,7 +265,7 @@ export function CreateExpenseModal({
                     Click to upload invoice, receipt, or delivery photo
                   </span>
                   <span className="text-[10px] text-slate-400">
-                    PNG, JPG, JPEG or PDF (Max 10MB)
+                    PNG, JPG, JPEG or PDF (Max 10MB) • Synced to Supabase Storage
                   </span>
                 </label>
               </div>
@@ -268,12 +283,13 @@ export function CreateExpenseModal({
                       {receiptFileName || "Attached Receipt Proof"}
                     </span>
                     <span className="text-[10px] text-emerald-700 font-medium">
-                      ✓ Ready for on-chain verification
+                      ✓ Ready for Supabase & On-Chain Audit
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
+                      setReceiptFile(null);
                       setReceiptPhotoPreview("");
                       setReceiptFileName("");
                     }}

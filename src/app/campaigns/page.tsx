@@ -23,6 +23,7 @@ export default function CampaignsPage() {
   const [category, setCategory] = useState("Disaster Relief");
   const [imageUri, setImageUri] = useState("");
   const [createdSuccessLocal, setCreatedSuccessLocal] = useState(false);
+  const [createdCampaignId, setCreatedCampaignId] = useState<number | null>(null);
 
   const {
     data: createHash,
@@ -37,7 +38,7 @@ export default function CampaignsPage() {
     isSuccess: isCreateSuccess,
   } = useWaitForTransactionReceipt({ hash: createHash });
 
-  // Auto-refresh and close modal when on-chain transaction confirms
+  // Auto-refresh when on-chain transaction confirms
   useEffect(() => {
     if (isCreateSuccess) {
       refetchCampaigns();
@@ -45,11 +46,7 @@ export default function CampaignsPage() {
       const timer = setTimeout(() => {
         setIsCreateModalOpen(false);
         setCreatedSuccessLocal(false);
-        setTitle("");
-        setDescription("");
-        setGoal("");
-        setImageUri("");
-      }, 1500);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [isCreateSuccess, refetchCampaigns]);
@@ -79,8 +76,9 @@ export default function CampaignsPage() {
 
     const finalImageUri = imageUri.trim() || defaultImg;
     const newId = Date.now();
+    setCreatedCampaignId(newId);
 
-    // Save locally for instant website and dashboard synchronization
+    // Save locally and to Supabase for instant real-time website updates
     saveLocalCampaign({
       id: newId,
       organization: (address || "0x2f2ca4e7CE1443aE7792675d5a7Fff4b2660fb0D") as `0x${string}`,
@@ -237,7 +235,7 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                  <span>128 donors</span>
+                  <span>Active Campaign</span>
                   <span className="text-emerald-700 font-semibold group-hover:underline flex items-center gap-1">
                     <span>View Campaign</span>
                     <ArrowRight className="w-3 h-3" />
@@ -268,7 +266,7 @@ export default function CampaignsPage() {
 
             <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-slate-700 font-medium">Campaign Title</label>
+                <label className="text-slate-700 font-medium">Campaign Title *</label>
                 <input
                   type="text"
                   required
@@ -280,7 +278,7 @@ export default function CampaignsPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-700 font-medium">Description</label>
+                <label className="text-slate-700 font-medium">Description *</label>
                 <textarea
                   required
                   rows={3}
@@ -293,7 +291,7 @@ export default function CampaignsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-medium">Goal (MON)</label>
+                  <label className="text-slate-700 font-medium">Goal (MON) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -307,7 +305,7 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-medium">Category</label>
+                  <label className="text-slate-700 font-medium">Category *</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
@@ -354,16 +352,16 @@ export default function CampaignsPage() {
               </div>
 
               {(isCreateSuccess || createdSuccessLocal) && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-bold flex items-center justify-center gap-1.5">
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-bold flex items-center justify-center gap-1.5 animate-in zoom-in-95">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>✓ Campaign created successfully! Added to directory.</span>
+                  <span>✓ Campaign created! Added to directory and synced with Monad.</span>
                 </div>
               )}
 
               {createError && (
                 <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-1.5">
                   <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>Transaction failed or rejected by wallet. Local preview preserved.</span>
+                  <span>Transaction rejected or failed. Local preview preserved.</span>
                 </div>
               )}
             </form>
