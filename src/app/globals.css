@@ -4,47 +4,40 @@
 
 @layer base {
   :root {
-    --background: 8 11 17;
-    --foreground: 248 250 252;
+    --background: 248 250 252;
+    --foreground: 15 23 42;
   }
 
   body {
-    color: rgb(var(--foreground));
-    background: #080B11;
+    color: #0F172A;
+    background-color: #F8FAFC;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     overflow-x: hidden;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Custom Clean Scrollbar */
+  /* Custom Clean Light Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #080B11;
+    background: #F1F5F9;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1F293D;
+    background: #CBD5E1;
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #334155;
+    background: #94A3B8;
   }
 }
 
-/* Custom glow effects */
-.glow-trust {
-  box-shadow: 0 0 25px -5px rgba(0, 245, 160, 0.15);
-}
-
-.glow-monad {
-  box-shadow: 0 0 25px -5px rgba(131, 110, 249, 0.2);
-}
-
-/* Glassmorphism subtle surface */
-.glass-surface {
-  background: rgba(15, 20, 32, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Light Surface Utility */
+.card-surface {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);
 }

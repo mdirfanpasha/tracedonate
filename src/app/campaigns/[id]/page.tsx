@@ -16,7 +16,8 @@ import {
   Receipt,
   ExternalLink,
   Lock,
-  Layers,
+  CheckCircle2,
+  HeartHandshake,
 } from "lucide-react";
 
 export default function CampaignDetailPage() {
@@ -42,116 +43,149 @@ export default function CampaignDetailPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Back Navigation */}
       <Link
         href="/campaigns"
-        className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Campaigns</span>
       </Link>
 
-      {/* Campaign Header & Overview */}
-      <div className="space-y-6">
-        {/* Cover Image & Category */}
-        <div className="relative h-64 sm:h-80 rounded-2xl overflow-hidden bg-slate-900 border border-white/[0.08]">
-          <img
-            src={campaign.imageUri}
-            alt={campaign.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-black/70 backdrop-blur-md text-xs font-mono text-emerald-400 border border-white/10">
-            {campaign.category}
+      {/* Two Column Layout on Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* LEFT COLUMN: Image, Story, Impact, Follow My Money */}
+        <div className="lg:col-span-7 space-y-8">
+          {/* Main Campaign Cover Image */}
+          <div className="relative h-72 sm:h-96 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
+            <img
+              src={campaign.imageUri}
+              alt={campaign.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-white/90 backdrop-blur-md text-xs font-mono font-bold text-emerald-800 border border-slate-200">
+              {campaign.category}
+            </div>
+            <div className="absolute bottom-4 right-4 px-3 py-1 rounded-lg bg-white/90 backdrop-blur-md text-xs font-mono text-slate-700 border border-slate-200">
+              Org: {formatAddress(campaign.organization, 4)}
+            </div>
           </div>
-          <div className="absolute bottom-4 right-4 px-3 py-1 rounded-lg bg-black/70 backdrop-blur-md text-xs font-mono text-slate-300 border border-white/10">
-            Org: {formatAddress(campaign.organization, 4)}
+
+          {/* Title & Story */}
+          <div className="space-y-4">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {campaign.title}
+            </h1>
+            <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+              {campaign.description}
+            </p>
           </div>
+
+          {/* Impact Guarantee Card */}
+          <div className="p-6 rounded-2xl bg-[#EEF7F4] border border-emerald-200 space-y-3">
+            <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+              <ShieldCheck className="w-5 h-5" />
+              <span>Smart Contract Escrow Guarantee</span>
+            </div>
+            <p className="text-xs text-slate-700 leading-relaxed">
+              Funds donated to this campaign are locked in the TraceDonate smart contract on Monad. They cannot be transferred to private organizer accounts and are only released upon audited proof of supplier invoices.
+            </p>
+          </div>
+
+          {/* SIGNATURE SECTION: FOLLOW THE MONEY */}
+          <section id="follow-the-money" className="space-y-6 pt-4 scroll-mt-24">
+            <MoneyFlowGraph campaign={campaign} />
+          </section>
         </div>
 
-        {/* Title & Description */}
-        <div className="space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            {campaign.title}
-          </h1>
-          <p className="text-sm text-slate-300 leading-relaxed max-w-3xl">
-            {campaign.description}
-          </p>
-        </div>
+        {/* RIGHT COLUMN: Sticky Fintech Donation Component */}
+        <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-6">
+          <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-elevated space-y-6">
+            {/* Raised & Goal */}
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <span className="text-xs text-slate-500 font-medium block">Total Raised</span>
+                  <span className="text-3xl font-bold font-mono text-slate-900">
+                    {campaign.totalRaised} <span className="text-sm font-normal text-slate-500">MON</span>
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-slate-500 font-medium block">Target Goal</span>
+                  <span className="text-lg font-bold font-mono text-slate-600">
+                    {campaign.goal} MON
+                  </span>
+                </div>
+              </div>
 
-        {/* Progress Bar & Stats */}
-        <div className="p-6 rounded-2xl bg-surface border border-white/[0.08] space-y-4 shadow-lg">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-            <div className="space-y-1">
-              <span className="text-xs text-slate-400">Total Raised</span>
-              <div className="text-2xl sm:text-3xl font-bold font-mono text-white">
-                {campaign.totalRaised} <span className="text-sm text-slate-400">/ {campaign.goal} MON</span>
+              {/* Progress Bar */}
+              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+
+              <div className="flex justify-between text-xs text-slate-500 font-mono">
+                <span>{percent}% of target goal</span>
+                <span>128 verified donors</span>
               </div>
             </div>
-            <div className="text-sm font-mono text-emerald-400 font-semibold">
-              {percent}% Funded • 128 Donors
-            </div>
-          </div>
 
-          <div className="w-full h-2 bg-white/[0.08] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-emerald-400 rounded-full transition-all duration-500"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
+            {/* Escrow & Spent Breakdown */}
+            <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs font-mono">
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">Available In Escrow</span>
+                <span className="text-emerald-700 font-bold text-sm">
+                  {campaign.currentBalance} MON
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">Verified Released</span>
+                <span className="text-slate-900 font-bold text-sm">
+                  {campaign.totalSpent} MON
+                </span>
+              </div>
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 text-xs font-mono border-t border-white/[0.05]">
-            <div>
-              <span className="text-slate-500 block">AVAILABLE IN ESCROW</span>
-              <span className="text-emerald-400 font-bold text-sm">
-                {campaign.currentBalance} MON
+            {/* Primary Action Button */}
+            <button
+              onClick={() => setIsDonationOpen(true)}
+              className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-md shadow-emerald-600/10"
+            >
+              <Coins className="w-4 h-4" />
+              <span>DONATE MON NOW</span>
+            </button>
+
+            {/* Secondary Action */}
+            <a
+              href="#follow-the-money"
+              className="w-full py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Follow the Money Trail</span>
+            </a>
+
+            {/* Verification Guarantee */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Verified Monad Contract</span>
               </span>
-            </div>
-            <div>
-              <span className="text-slate-500 block">TOTAL SPENT</span>
-              <span className="text-white font-bold text-sm">
-                {campaign.totalSpent} MON
-              </span>
-            </div>
-            <div className="col-span-2 sm:col-span-1">
-              <span className="text-slate-500 block">SMART CONTRACT</span>
               <a
                 href={`${MONAD_EXPLORER_URL}/address/${campaign.organization}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-slate-300 hover:text-emerald-400 flex items-center gap-1 font-mono text-xs pt-0.5"
+                className="text-emerald-700 hover:underline flex items-center gap-0.5 font-mono"
               >
-                <span>Monad Verified</span>
+                <span>Explorer</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </div>
-
-          {/* TWO PRIMARY ACTIONS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
-            <button
-              onClick={() => setIsDonationOpen(true)}
-              className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10"
-            >
-              <Coins className="w-4 h-4" />
-              <span>DONATE MON</span>
-            </button>
-
-            <a
-              href="#follow-the-money"
-              className="w-full py-3.5 rounded-xl bg-surface border border-white/[0.12] text-white hover:bg-surface-hover font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-            >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>FOLLOW THE MONEY</span>
-            </a>
-          </div>
         </div>
       </div>
-
-      {/* SIGNATURE SECTION: FOLLOW THE MONEY */}
-      <section id="follow-the-money" className="space-y-6 pt-4 scroll-mt-24">
-        <MoneyFlowGraph campaign={campaign} />
-      </section>
 
       {/* Donation Modal */}
       <DonationModal

@@ -6,7 +6,7 @@ import { TRACEDONATE_CONTRACT_ADDRESS, MONAD_EXPLORER_URL } from "@/config/contr
 import { CreateExpenseModal } from "@/components/CreateExpenseModal";
 import { VerifyExpenseModal } from "@/components/VerifyExpenseModal";
 import { Campaign, Expense } from "@/lib/types";
-import { formatAddress, getCategoryColor } from "@/lib/utils";
+import { formatAddress } from "@/lib/utils";
 import { useAccount } from "wagmi";
 import { useAllCampaigns } from "@/hooks/useTraceDonateContract";
 import {
@@ -38,21 +38,21 @@ export default function OrgDashboardPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.07] pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             Organization & Verifier Console
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400">
+          <p className="text-xs sm:text-sm text-slate-600">
             Submit itemized vendor invoices and execute direct on-chain settlements on Monad.
           </p>
         </div>
 
         <button
           onClick={() => setSelectedCampaignForExpense(campaigns[0])}
-          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-slate-200 transition-colors flex items-center gap-1.5 shadow-sm"
+          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-sm"
         >
           <PlusCircle className="w-4 h-4" />
           <span>New Expense</span>
@@ -61,36 +61,36 @@ export default function OrgDashboardPage() {
 
       {/* Overview Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-surface border border-white/[0.06] space-y-1">
-          <span className="text-xs text-slate-400">Total Raised</span>
-          <div className="text-2xl font-bold font-mono text-white">
-            {totalRaisedAcross} <span className="text-xs text-slate-400">MON</span>
+        <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-card space-y-1">
+          <span className="text-xs text-slate-500 font-medium">Total Raised</span>
+          <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900">
+            {totalRaisedAcross} <span className="text-xs text-slate-500 font-normal">MON</span>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-surface border border-white/[0.06] space-y-1">
-          <span className="text-xs text-slate-400">Total Spent</span>
-          <div className="text-2xl font-bold font-mono text-emerald-400">
-            {totalSpentAcross} <span className="text-xs text-slate-400">MON</span>
+        <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-card space-y-1">
+          <span className="text-xs text-slate-500 font-medium">Total Spent</span>
+          <div className="text-2xl sm:text-3xl font-bold font-mono text-emerald-600">
+            {totalSpentAcross} <span className="text-xs text-slate-500 font-normal">MON</span>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-surface border border-white/[0.06] space-y-1">
-          <span className="text-xs text-slate-400">Available in Escrow</span>
-          <div className="text-2xl font-bold font-mono text-white">
-            {totalInEscrow} <span className="text-xs text-slate-400">MON</span>
+        <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-card space-y-1">
+          <span className="text-xs text-slate-500 font-medium">Available in Escrow</span>
+          <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900">
+            {totalInEscrow} <span className="text-xs text-slate-500 font-normal">MON</span>
           </div>
         </div>
       </div>
 
       {/* Recent Expenses & Payout Queue */}
-      <div className="p-6 rounded-2xl bg-surface border border-white/[0.08] space-y-4">
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-          <h3 className="font-bold text-base text-white">Expenditure & Audit Queue</h3>
-          <span className="text-xs text-slate-400 font-mono">{allExpenses.length} Records</span>
+      <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/80 shadow-card space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 className="font-bold text-lg text-slate-900">Expenditure & Audit Queue</h3>
+          <span className="text-xs text-slate-500 font-mono">{allExpenses.length} Records</span>
         </div>
 
-        <div className="divide-y divide-white/[0.05]">
+        <div className="divide-y divide-slate-100">
           {allExpenses.map((expense) => {
             const isExecuted = expense.status === "Executed";
 
@@ -101,32 +101,32 @@ export default function OrgDashboardPage() {
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-white">{expense.category}</span>
+                    <span className="font-bold text-sm text-slate-900">{expense.category}</span>
                     <span
                       className={`text-[10px] font-mono px-2 py-0.5 rounded font-semibold ${
                         isExecuted
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          : "bg-amber-50 text-amber-800 border border-amber-200"
                       }`}
                     >
                       {isExecuted ? "✓ Verified" : "Pending Audit"}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300 line-clamp-1">{expense.description}</p>
+                  <p className="text-xs text-slate-600 line-clamp-1">{expense.description}</p>
                   <div className="text-[11px] text-slate-500 font-mono">
                     Supplier: {formatAddress(expense.recipientSupplier, 4)}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-mono font-bold text-emerald-400">
+                  <span className="text-base font-mono font-bold text-emerald-700">
                     {expense.amount} MON
                   </span>
 
                   {!isExecuted ? (
                     <button
                       onClick={() => setSelectedExpenseToVerify(expense)}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm"
+                      className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm"
                     >
                       <span>Audit & Release</span>
                     </button>
@@ -135,7 +135,7 @@ export default function OrgDashboardPage() {
                       href={`${MONAD_EXPLORER_URL}/address/${expense.recipientSupplier}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-hover border border-white/[0.08] text-xs font-mono text-slate-300 hover:text-white transition-colors flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700 transition-colors flex items-center gap-1"
                     >
                       <span>Explorer</span>
                       <ExternalLink className="w-3 h-3" />

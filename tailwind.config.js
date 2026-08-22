@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: ["class"],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,59 +8,61 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: "#080B11",
+        background: "#F8FAFC",
         surface: {
-          DEFAULT: "#0F1420",
-          hover: "#151C2C",
-          active: "#1C253A",
-          card: "#0D121D",
-          border: "rgba(255, 255, 255, 0.08)",
-          subtle: "rgba(255, 255, 255, 0.03)",
-        },
-        monad: {
-          DEFAULT: "#836EF9",
-          hover: "#7053F7",
-          light: "#A495FA",
-          dark: "#200052",
+          DEFAULT: "#FFFFFF",
+          card: "#FFFFFF",
+          subtle: "#F1F5F9",
+          hover: "#F8FAFC",
+          mint: "#EEF7F4",
+          blue: "#F1F7FF",
+          amber: "#FFF9F0",
+          border: "#E2E8F0",
         },
         brand: {
-          50: "#ECFDF5",
-          100: "#D1FAE5",
-          200: "#A7F3D0",
-          300: "#6EE7B7",
-          400: "#34D399",
-          500: "#00F5A0", // signature trust emerald
+          50: "#F0FDF4",
+          100: "#DCFCE7",
+          200: "#BBF7D0",
+          300: "#86EFAC",
+          400: "#4ADE80",
+          500: "#10B981", // primary emerald
           600: "#059669",
           700: "#047857",
           800: "#065F46",
           900: "#064E3B",
-          accent: "#00F5A0",
-          cyan: "#00D2FF",
+          teal: "#0D9488",
+          dark: "#0F172A",
+        },
+        monad: {
+          DEFAULT: "#6366F1",
+          hover: "#4F46E5",
+          light: "#EEF2FF",
+          dark: "#312E81",
         },
         text: {
-          primary: "#F8FAFC",
-          secondary: "#94A3B8",
+          primary: "#0F172A", // deep navy
+          secondary: "#475569", // muted slate
           muted: "#64748B",
-          dark: "#0F172A",
+          light: "#94A3B8",
         },
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
         mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
+      },
+      boxShadow: {
+        subtle: "0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)",
+        card: "0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03)",
+        elevated: "0 10px 30px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04)",
       },
       animation: {
         "pulse-subtle": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "flow-line": "flow 2s linear infinite",
-        "shimmer": "shimmer 2.5s linear infinite",
       },
       keyframes: {
         flow: {
           "0%": { strokeDashoffset: "24" },
           "100%": { strokeDashoffset: "0" },
-        },
-        shimmer: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(100%)" },
         },
       },
     },

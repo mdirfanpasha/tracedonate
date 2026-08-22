@@ -25,30 +25,35 @@ export function Navbar() {
 
   return (
     <>
-      {/* Wrong Network Banner */}
+      {/* Wrong Network Warning Banner */}
       {isWrongNetwork && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center text-xs text-amber-300 flex items-center justify-center gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
-          <span>Please switch to Monad Testnet to interact.</span>
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-center text-xs text-amber-800 flex items-center justify-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+          <span>Please switch to Monad Testnet to interact with smart contracts.</span>
           <button
             onClick={() => switchChain({ chainId: MONAD_TESTNET_CHAIN_ID })}
-            className="ml-2 px-2.5 py-0.5 rounded bg-amber-400 text-black font-semibold hover:bg-amber-300 transition-colors"
+            className="ml-2 px-2.5 py-0.5 rounded-md bg-amber-600 text-white font-medium hover:bg-amber-700 transition-colors"
           >
             Switch to Monad
           </button>
         </div>
       )}
 
-      <header className="sticky top-0 z-50 w-full border-b border-white/[0.07] bg-[#080B11]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center group-hover:border-emerald-500 transition-colors">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          {/* Brand Logo */}
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center group-hover:border-emerald-500 transition-colors">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
             </div>
-            <span className="font-semibold text-base tracking-tight text-white">
-              Trace<span className="text-emerald-400">Donate</span>
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-base tracking-tight text-slate-900">
+                Trace<span className="text-emerald-600">Donate</span>
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-semibold hidden sm:inline-block">
+                Monad
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
@@ -61,8 +66,8 @@ export function Navbar() {
                   href={link.href}
                   className={`text-sm font-medium transition-colors ${
                     isActive
-                      ? "text-emerald-400 font-semibold"
-                      : "text-slate-400 hover:text-white"
+                      ? "text-emerald-600 font-semibold"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   {link.label}
@@ -71,7 +76,7 @@ export function Navbar() {
             })}
           </nav>
 
-          {/* Right Action: Connect Wallet */}
+          {/* Right Action: Wallet */}
           <div className="hidden md:flex items-center gap-3">
             <ConnectButton.Custom>
               {({
@@ -102,7 +107,7 @@ export function Navbar() {
                           <button
                             onClick={openConnectModal}
                             type="button"
-                            className="px-4 py-2 rounded-lg bg-white text-black text-xs font-semibold hover:bg-slate-200 transition-colors shadow-sm"
+                            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors shadow-sm"
                           >
                             Connect Wallet
                           </button>
@@ -114,7 +119,7 @@ export function Navbar() {
                           <button
                             onClick={openChainModal}
                             type="button"
-                            className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium hover:bg-red-500/20 transition-colors"
+                            className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-medium hover:bg-red-100 transition-colors"
                           >
                             Wrong Network
                           </button>
@@ -126,16 +131,16 @@ export function Navbar() {
                           <button
                             onClick={openChainModal}
                             type="button"
-                            className="px-2.5 py-1.5 rounded-lg bg-surface border border-white/[0.08] text-xs font-mono text-slate-300 hover:bg-surface-hover transition-colors flex items-center gap-1.5"
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
                           >
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span>{chain.name || "Monad"}</span>
                           </button>
 
                           <button
                             onClick={openAccountModal}
                             type="button"
-                            className="px-3 py-1.5 rounded-lg bg-surface border border-white/[0.08] text-xs font-mono text-white hover:bg-surface-hover transition-colors"
+                            className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-mono font-medium text-slate-900 hover:bg-slate-50 transition-colors shadow-sm"
                           >
                             {account.displayName}
                           </button>
@@ -152,7 +157,7 @@ export function Navbar() {
           <div className="flex items-center gap-2 md:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg bg-surface border border-white/[0.08] text-slate-300 hover:text-white"
+              className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:text-slate-900"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -162,21 +167,21 @@ export function Navbar() {
 
         {/* Mobile Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-b border-white/[0.08] bg-[#080B11] px-4 pt-3 pb-6 space-y-4">
+          <div className="md:hidden border-b border-slate-200 bg-white px-4 pt-3 pb-6 space-y-4">
             <nav className="flex flex-col space-y-3">
               {navLinks.map((link) => (
                 <Link
                   key={link.label}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-medium text-slate-300 hover:text-emerald-400 py-1"
+                  className="text-sm font-medium text-slate-700 hover:text-emerald-600 py-1"
                 >
                   {link.label}
                 </Link>
               ))}
             </nav>
 
-            <div className="pt-3 border-t border-white/[0.08]">
+            <div className="pt-3 border-t border-slate-100">
               <ConnectButton showBalance={false} />
             </div>
           </div>

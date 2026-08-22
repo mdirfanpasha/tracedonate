@@ -5,10 +5,10 @@ import { Footer } from "@/components/Footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TraceDonate | Transparent Charitable Giving on Monad",
+  title: "TraceDonate | Transparent Giving on Monad",
   description:
-    "Every donation. Every payment. Every proof. TraceDonate is a transparent Web3 charitable giving platform built on Monad where money is held in smart contract escrow and traced to verified supplier settlements.",
-  keywords: ["Monad", "Web3", "Charity", "Transparency", "Blockchain Donations", "Smart Contracts", "Escrow"],
+    "Know where your money goes. Trace every donation. Follow every payment. Verify every transaction on Monad.",
+  keywords: ["Monad", "Web3", "Charity", "Transparency", "Donations", "Smart Contracts", "Escrow"],
 };
 
 export default function RootLayout({
@@ -17,8 +17,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-[#080B11] text-white antialiased flex flex-col min-h-screen">
+    <html lang="en">
+      <body className="bg-[#F8FAFC] text-[#0F172A] antialiased flex flex-col min-h-screen">
         <Providers>
           <Navbar />
           <main className="flex-grow">{children}</main>

@@ -30,28 +30,28 @@ export function TransactionBadge({
 
   return (
     <div
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface/80 border border-surface-border text-xs font-mono transition-all hover:border-brand-500/40 group ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-xs font-mono transition-all hover:bg-slate-100 ${className}`}
     >
-      {label && <span className="text-text-muted text-[10px] uppercase">{label}:</span>}
+      {label && <span className="text-slate-500 text-[10px] uppercase font-bold">{label}:</span>}
       <a
         href={getExplorerTxUrl(txHash)}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-brand-500 hover:underline flex items-center gap-1"
+        className="text-emerald-700 hover:underline font-semibold flex items-center gap-1"
         title="View transaction on Monad Explorer"
       >
         <span>{showFull ? txHash : formatAddress(txHash, 5)}</span>
-        <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+        <ExternalLink className="w-3 h-3 opacity-70" />
       </a>
 
       <button
         onClick={handleCopy}
         type="button"
-        className="p-0.5 text-text-muted hover:text-text-primary rounded transition-colors"
+        className="p-0.5 text-slate-400 hover:text-slate-700 rounded transition-colors"
         title="Copy Transaction Hash"
       >
         {copied ? (
-          <Check className="w-3 h-3 text-brand-500" />
+          <Check className="w-3 h-3 text-emerald-600" />
         ) : (
           <Copy className="w-3 h-3" />
         )}

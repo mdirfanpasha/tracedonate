@@ -27,7 +27,6 @@ export default function CampaignsPage() {
     data: createHash,
     writeContract: createCampaignContract,
     isPending: isCreatePending,
-    error: createError,
   } = useWriteContract();
 
   const {
@@ -66,19 +65,19 @@ export default function CampaignsPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.07] pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             Transparent Campaigns
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400">
-            Select a campaign to donate and trace funds down to supplier invoices.
+          <p className="text-xs sm:text-sm text-slate-600">
+            Select a verified campaign to donate and trace money down to supplier invoices.
           </p>
         </div>
 
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-slate-200 transition-colors flex items-center gap-1.5 shadow-sm"
+          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-sm"
         >
           <PlusCircle className="w-4 h-4" />
           <span>New Campaign</span>
@@ -88,13 +87,13 @@ export default function CampaignsPage() {
       {/* Filter & Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search campaigns..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-surface border border-white/[0.08] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+            placeholder="Search campaigns by title or purpose..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors shadow-sm"
           />
         </div>
 
@@ -103,10 +102,10 @@ export default function CampaignsPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${
                 selectedCategory === cat
-                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                  : "bg-surface border border-white/[0.06] text-slate-400 hover:text-white"
+                  ? "bg-emerald-600 text-white shadow-sm font-semibold"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
               {cat}
@@ -126,46 +125,46 @@ export default function CampaignsPage() {
             <Link
               key={campaign.id}
               href={`/campaigns/${campaign.id}`}
-              className="group p-5 rounded-2xl bg-surface border border-white/[0.06] hover:border-emerald-500/30 transition-all flex flex-col justify-between space-y-4"
+              className="group p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-emerald-500/40 hover:shadow-card transition-all flex flex-col justify-between space-y-4"
             >
               <div className="space-y-3">
-                <div className="relative h-40 rounded-xl overflow-hidden bg-slate-800">
+                <div className="relative h-44 rounded-xl overflow-hidden bg-slate-100">
                   <img
                     src={campaign.imageUri}
                     alt={campaign.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-mono text-emerald-400 border border-white/10">
+                  <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-md text-[10px] font-mono text-emerald-800 border border-slate-200 font-semibold">
                     {campaign.category}
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <h3 className="font-semibold text-base text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
+                  <h3 className="font-bold text-base text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
                     {campaign.title}
                   </h3>
-                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
                     {campaign.description}
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2 pt-2 border-t border-white/[0.05]">
+              <div className="space-y-2 pt-3 border-t border-slate-100">
                 <div className="flex justify-between text-xs font-mono">
-                  <span className="text-white font-bold">{campaign.totalRaised} MON</span>
-                  <span className="text-slate-400">of {campaign.goal} MON</span>
+                  <span className="text-slate-900 font-bold">{campaign.totalRaised} MON</span>
+                  <span className="text-slate-500">of {campaign.goal} MON</span>
                 </div>
 
-                <div className="w-full h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                     style={{ width: `${percent}%` }}
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                  <span>{percent}% funded • 128 donors</span>
-                  <span className="text-emerald-400 font-medium group-hover:underline flex items-center gap-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                  <span>128 donors</span>
+                  <span className="text-emerald-700 font-semibold group-hover:underline flex items-center gap-1">
                     <span>View Campaign</span>
                     <ArrowRight className="w-3 h-3" />
                   </span>
@@ -178,16 +177,16 @@ export default function CampaignsPage() {
 
       {/* Create Campaign Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl bg-[#0F1420] border border-white/[0.08] p-6 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl bg-white border border-slate-200 p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <h3 className="font-bold text-base text-white">Create New Campaign</h3>
-                <p className="text-xs text-slate-400">Deploy a transparent escrow campaign on Monad</p>
+                <h3 className="font-bold text-base text-slate-900">Create New Campaign</h3>
+                <p className="text-xs text-slate-500">Deploy a transparent escrow campaign on Monad</p>
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -195,32 +194,32 @@ export default function CampaignsPage() {
 
             <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-slate-300 font-medium">Campaign Title</label>
+                <label className="text-slate-700 font-medium">Campaign Title</label>
                 <input
                   type="text"
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Flood Relief Emergency Fund"
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-300 font-medium">Description</label>
+                <label className="text-slate-700 font-medium">Description</label>
                 <textarea
                   required
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Explain the purpose and verified expenditure plan..."
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-slate-300 font-medium">Goal (MON)</label>
+                  <label className="text-slate-700 font-medium">Goal (MON)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -228,16 +227,16 @@ export default function CampaignsPage() {
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
                     placeholder="e.g. 50"
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500 font-mono"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-slate-300 font-medium">Category</label>
+                  <label className="text-slate-700 font-medium">Category</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                   >
                     <option value="Disaster Relief">Disaster Relief</option>
                     <option value="Clean Water">Clean Water</option>
@@ -249,13 +248,13 @@ export default function CampaignsPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-300 font-medium">Cover Image URL (optional)</label>
+                <label className="text-slate-700 font-medium">Cover Image URL (optional)</label>
                 <input
                   type="url"
                   value={imageUri}
                   onChange={(e) => setImageUri(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                 />
               </div>
 
@@ -263,7 +262,7 @@ export default function CampaignsPage() {
                 <button
                   type="submit"
                   disabled={isCreatePending || isCreateConfirming}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs transition-colors disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors disabled:opacity-50 shadow-sm"
                 >
                   {isCreatePending
                     ? "Confirm in Wallet..."
@@ -274,7 +273,7 @@ export default function CampaignsPage() {
               </div>
 
               {isCreateSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-center font-medium">
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-medium">
                   ✓ Campaign deployed successfully on Monad!
                 </div>
               )}
