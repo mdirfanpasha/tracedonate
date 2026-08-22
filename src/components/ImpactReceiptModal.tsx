@@ -49,7 +49,7 @@ export function ImpactReceiptModal({
         <button
           onClick={onClose}
           type="button"
-          className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -58,24 +58,26 @@ export function ImpactReceiptModal({
         <div className="p-6 rounded-2xl bg-[#F8FAFC] border border-slate-200 space-y-6 text-slate-900">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
-                <ShieldCheck className="w-4 h-4" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black">
+                TD
               </div>
               <div>
-                <span className="font-bold text-sm text-slate-900 block">TraceDonate</span>
-                <span className="text-[10px] text-slate-500 font-mono">Digital Proof Certificate</span>
+                <h3 className="font-extrabold text-base tracking-tight text-slate-900">
+                  TraceDonate Proof
+                </h3>
+                <p className="text-[11px] font-mono text-emerald-800 font-bold uppercase">
+                  Verified Monad Escrow Impact Certificate
+                </p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
-              Monad Testnet • 10143
-            </span>
+            <Award className="w-8 h-8 text-emerald-600" />
           </div>
 
-          {/* Amount Callout */}
-          <div className="text-center py-2 space-y-1">
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
-              Verified Charitable Contribution
+          {/* Certificate Body */}
+          <div className="text-center space-y-2 py-2">
+            <span className="text-xs uppercase tracking-wider font-mono text-slate-500">
+              Contribution Recorded
             </span>
             <div className="text-3xl font-extrabold font-mono text-emerald-700">
               {donationAmount} MON
@@ -115,25 +117,35 @@ export function ImpactReceiptModal({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={handlePrint}
-            type="button"
-            className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Download className="w-4 h-4" />
-            <span>Save / Print Proof</span>
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-3">
+            <button
+              onClick={handlePrint}
+              type="button"
+              className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Save / Print Proof</span>
+            </button>
 
-          <a
-            href={getExplorerTxUrl(txHash || "0x3a79d5012f418b76c8c83a79d5012f418b76c8c83a79d5012f418b76c8c8a1b2")}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+            <a
+              href={getExplorerTxUrl(txHash || "0x3a79d5012f418b76c8c83a79d5012f418b76c8c83a79d5012f418b76c8c8a1b2")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <span>Monad Explorer</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          <button
+            onClick={onClose}
+            type="button"
+            className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-sm text-center"
           >
-            <span>Monad Explorer</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+            Done / Close
+          </button>
         </div>
       </div>
     </div>

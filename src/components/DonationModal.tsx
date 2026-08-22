@@ -7,6 +7,7 @@ import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagm
 import { parseEther } from "viem";
 import { recordLocalDonation } from "@/hooks/useTraceDonateContract";
 import { useQueryClient } from "@tanstack/react-query";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import {
   X,
   Heart,
@@ -16,6 +17,7 @@ import {
   ShieldCheck,
   Receipt,
   AlertCircle,
+  Wallet,
 } from "lucide-react";
 
 interface DonationModalProps {
@@ -108,8 +110,9 @@ export function DonationModal({
             <p className="text-xs text-slate-500 line-clamp-1">{campaign.title}</p>
           </div>
           <button
+            type="button"
             onClick={handleClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -145,7 +148,7 @@ export function DonationModal({
                     key={amt}
                     type="button"
                     onClick={() => setAmount(amt)}
-                    className={`py-1.5 rounded-lg text-xs font-mono font-semibold transition-colors ${
+                    className={`py-1.5 rounded-lg text-xs font-mono font-semibold transition-colors cursor-pointer ${
                       amount === amt
                         ? "bg-emerald-600 text-white shadow-sm"
                         : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -162,13 +165,29 @@ export function DonationModal({
               <span>100% held in smart contract escrow until invoices are verified.</span>
             </div>
 
-            <button
-              onClick={handleDonate}
-              disabled={!isConnected || !amount || parseFloat(amount) <= 0 || isWalletPending}
-              className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors disabled:opacity-50 shadow-md shadow-emerald-600/10"
-            >
-              {isWalletPending ? "1. Confirm in wallet..." : "DONATE NOW"}
-            </button>
+            {isConnected ? (
+              <button
+                type="button"
+                onClick={handleDonate}
+                disabled={!amount || parseFloat(amount) <= 0 || isWalletPending}
+                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors disabled:opacity-50 shadow-md shadow-emerald-600/10 cursor-pointer"
+              >
+                {isWalletPending ? "1. Confirm in wallet..." : "DONATE NOW"}
+              </button>
+            ) : (
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <button
+                    type="button"
+                    onClick={openConnectModal}
+                    className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    <span>Connect Wallet to Donate</span>
+                  </button>
+                )}
+              </ConnectButton.Custom>
+            )}
 
             {writeError && (
               <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
@@ -221,25 +240,34 @@ export function DonationModal({
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
-              <a
-                href={`${MONAD_EXPLORER_URL}/tx/${hash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-2.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                <span>View Transaction</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-
               <button
+                type="button"
                 onClick={() => {
                   onSuccess(hash, amount);
                   handleClose();
                 }}
-                className="w-full py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <Receipt className="w-3.5 h-3.5" />
                 <span>View Impact Receipt</span>
+              </button>
+
+              <a
+                href={`${MONAD_EXPLORER_URL}/tx/${hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>View on Monad Explorer</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+
+              <button
+                type="button"
+                onClick={handleClose}
+                className="w-full py-2 rounded-xl text-slate-500 hover:text-slate-800 text-xs font-medium transition-colors cursor-pointer"
+              >
+                Done / Close
               </button>
             </div>
           </div>
