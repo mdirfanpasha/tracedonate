@@ -1,12 +1,13 @@
 "use client";
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useWatchContractEvent } from "wagmi";
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI, SEED_CAMPAIGNS } from "@/config/contracts";
 import { Campaign, Expense, Donation, ExpenseStatus } from "@/lib/types";
 import { formatMon } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
 import { syncCampaignToSupabase, fetchSupabaseCampaigns, supabase } from "@/lib/supabase";
 import { parseEther } from "viem";
+import { useQueryClient } from "@tanstack/react-query";
 
 const LOCAL_CAMPAIGNS_KEY = "tracedonate_local_campaigns";
 const LOCAL_EXPENSES_KEY = "tracedonate_local_expenses";
@@ -201,6 +202,9 @@ export function saveLocalExpense(campaignId: number, expense: Expense) {
 }
 
 export function useAllCampaigns() {
+  const queryClient = useQueryClient();
+  const [tick, setTick] = useState(0);
+
   const { data, isLoading, refetch, error } = useReadContract({
     address: TRACEDONATE_CONTRACT_ADDRESS,
     abi: TRACEDONATE_ABI,
@@ -226,12 +230,32 @@ export function useAllCampaigns() {
     } catch {}
   }, []);
 
+  // Listen to on-chain DonationReceived logs directly from Monad RPC
+  useWatchContractEvent({
+    address: TRACEDONATE_CONTRACT_ADDRESS,
+    abi: TRACEDONATE_ABI,
+    eventName: "DonationReceived",
+    onLogs(logs) {
+      console.log("⚡ Monad On-Chain DonationReceived Event Log:", logs);
+      queryClient.invalidateQueries();
+      setTick((t) => t + 1);
+      refetch();
+      window.dispatchEvent(new Event("tracedonate_update"));
+    },
+  });
+
   useEffect(() => {
     loadLocal();
     loadSupabase();
 
-    window.addEventListener("tracedonate_update", loadLocal);
-    window.addEventListener("storage", loadLocal);
+    const handleUpdate = () => {
+      loadLocal();
+      loadSupabase();
+      setTick((t) => t + 1);
+    };
+
+    window.addEventListener("tracedonate_update", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
 
     const interval = setInterval(() => {
       loadLocal();
@@ -252,8 +276,8 @@ export function useAllCampaigns() {
     }
 
     return () => {
-      window.removeEventListener("tracedonate_update", loadLocal);
-      window.removeEventListener("storage", loadLocal);
+      window.removeEventListener("tracedonate_update", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
       clearInterval(interval);
       if (channel && supabase) {
         supabase.removeChannel(channel);
@@ -263,8 +287,13 @@ export function useAllCampaigns() {
 
   const allMap = new Map<number, Campaign>();
 
+  // 1. Initial Seed campaigns
   (SEED_CAMPAIGNS as unknown as Campaign[]).forEach((c) => allMap.set(c.id, c));
+
+  // 2. Supabase campaigns
   supabaseCampaigns.forEach((c) => allMap.set(c.id, c));
+
+  // 3. Locally created / saved campaigns (includes recent local donations)
   localCampaigns.forEach((c) => {
     const existing = allMap.get(c.id);
     allMap.set(c.id, {
@@ -274,6 +303,7 @@ export function useAllCampaigns() {
     });
   });
 
+  // 4. Smart contract campaigns on Monad
   if (Array.isArray(data)) {
     data.forEach((c: any) => {
       const id = Number(c.id);
@@ -325,6 +355,7 @@ export function useAllCampaigns() {
     refetch: () => {
       loadLocal();
       loadSupabase();
+      queryClient.invalidateQueries();
       refetch();
     },
     error,
@@ -333,6 +364,8 @@ export function useAllCampaigns() {
 }
 
 export function useCampaignDetails(campaignId: number) {
+  const queryClient = useQueryClient();
+  const [tick, setTick] = useState(0);
   const { campaigns, refetch: refetchAll } = useAllCampaigns();
 
   const { data: campaignRaw, isLoading: isCampaignLoading, refetch: refetchCampaign } = useReadContract({
@@ -356,26 +389,38 @@ export function useCampaignDetails(campaignId: number) {
   });
 
   const [localExpenses, setLocalExpenses] = useState<Expense[]>([]);
+  const [localCampaign, setLocalCampaign] = useState<Campaign | null>(null);
 
-  const loadLocalExpenses = useCallback(() => {
+  const loadLocalState = useCallback(() => {
     setLocalExpenses(getLocalExpenses(campaignId));
+    const all = getLocalCampaigns();
+    const found = all.find((c) => c.id === campaignId);
+    if (found) setLocalCampaign(found);
   }, [campaignId]);
 
   useEffect(() => {
-    loadLocalExpenses();
-    window.addEventListener("tracedonate_update", loadLocalExpenses);
-    window.addEventListener("storage", loadLocalExpenses);
-    const interval = setInterval(loadLocalExpenses, 3000);
+    loadLocalState();
+
+    const handleUpdate = () => {
+      loadLocalState();
+      setTick((t) => t + 1);
+    };
+
+    window.addEventListener("tracedonate_update", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    const interval = setInterval(handleUpdate, 3000);
+
     return () => {
-      window.removeEventListener("tracedonate_update", loadLocalExpenses);
-      window.removeEventListener("storage", loadLocalExpenses);
+      window.removeEventListener("tracedonate_update", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
       clearInterval(interval);
     };
-  }, [loadLocalExpenses]);
+  }, [loadLocalState]);
 
   const matchedFromAll = campaigns.find((c) => c.id === campaignId);
 
   const seedFallback =
+    localCampaign ||
     matchedFromAll ||
     getLocalCampaigns().find((c) => c.id === campaignId) ||
     SEED_CAMPAIGNS.find((c) => c.id === campaignId) ||
@@ -424,16 +469,19 @@ export function useCampaignDetails(campaignId: number) {
     campaign,
     isLoading: isCampaignLoading || isExpensesLoading,
     refetch: () => {
-      loadLocalExpenses();
+      loadLocalState();
+      queryClient.invalidateQueries();
       refetchCampaign();
       refetchExpenses();
       refetchAll();
+      setTick((t) => t + 1);
     },
   };
 }
 
 export function useCampaignDonations(campaignId: number) {
   const [localDonations, setLocalDonations] = useState<Donation[]>([]);
+  const [tick, setTick] = useState(0);
 
   const loadDonations = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -449,12 +497,18 @@ export function useCampaignDonations(campaignId: number) {
 
   useEffect(() => {
     loadDonations();
-    window.addEventListener("tracedonate_update", loadDonations);
-    window.addEventListener("storage", loadDonations);
-    const interval = setInterval(loadDonations, 3000);
+    const handleUpdate = () => {
+      loadDonations();
+      setTick((t) => t + 1);
+    };
+
+    window.addEventListener("tracedonate_update", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    const interval = setInterval(handleUpdate, 3000);
+
     return () => {
-      window.removeEventListener("tracedonate_update", loadDonations);
-      window.removeEventListener("storage", loadDonations);
+      window.removeEventListener("tracedonate_update", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
       clearInterval(interval);
     };
   }, [loadDonations]);
@@ -469,6 +523,9 @@ export function useCampaignDonations(campaignId: number) {
 }
 
 export function useDonorHistory(donorAddress?: string) {
+  const queryClient = useQueryClient();
+  const [tick, setTick] = useState(0);
+
   const { data: donationsRaw, isLoading, refetch } = useReadContract({
     address: TRACEDONATE_CONTRACT_ADDRESS,
     abi: TRACEDONATE_ABI,
@@ -491,12 +548,19 @@ export function useDonorHistory(donorAddress?: string) {
 
   useEffect(() => {
     loadLocalDonations();
-    window.addEventListener("tracedonate_update", loadLocalDonations);
-    window.addEventListener("storage", loadLocalDonations);
-    const interval = setInterval(loadLocalDonations, 3000);
+
+    const handleUpdate = () => {
+      loadLocalDonations();
+      setTick((t) => t + 1);
+    };
+
+    window.addEventListener("tracedonate_update", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    const interval = setInterval(handleUpdate, 3000);
+
     return () => {
-      window.removeEventListener("tracedonate_update", loadLocalDonations);
-      window.removeEventListener("storage", loadLocalDonations);
+      window.removeEventListener("tracedonate_update", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
       clearInterval(interval);
     };
   }, [loadLocalDonations]);
@@ -516,7 +580,11 @@ export function useDonorHistory(donorAddress?: string) {
   return {
     donations: mergedDonations,
     isLoading,
-    refetch,
+    refetch: () => {
+      loadLocalDonations();
+      queryClient.invalidateQueries();
+      refetch();
+    },
   };
 }
 

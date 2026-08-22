@@ -6,6 +6,7 @@ import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI, MONAD_EXPLORER_URL } fro
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { parseEther } from "viem";
 import { recordLocalDonation } from "@/hooks/useTraceDonateContract";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   X,
   Heart,
@@ -31,6 +32,7 @@ export function DonationModal({
   onSuccess,
 }: DonationModalProps) {
   const { address, isConnected } = useAccount();
+  const queryClient = useQueryClient();
   const [amount, setAmount] = useState<string>("0.1");
 
   const quickAmounts = ["0.01", "0.05", "0.1", "0.5", "1"];
@@ -49,12 +51,33 @@ export function DonationModal({
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
 
-  // When donation confirms on-chain, automatically update campaign balance and records in real time
+  // When donation confirms on Monad blockchain:
+  // 1. Record donation
+  // 2. Invalidate TanStack query cache
+  // 3. Dispatch global sync event
+  // 4. Staged refetches for RPC block propagation
   useEffect(() => {
     if (isConfirmed && hash) {
       recordLocalDonation(campaign.id, amount, address, hash);
+      queryClient.invalidateQueries();
+      window.dispatchEvent(new Event("tracedonate_update"));
+
+      const t1 = setTimeout(() => {
+        queryClient.invalidateQueries();
+        window.dispatchEvent(new Event("tracedonate_update"));
+      }, 1000);
+
+      const t2 = setTimeout(() => {
+        queryClient.invalidateQueries();
+        window.dispatchEvent(new Event("tracedonate_update"));
+      }, 2500);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
-  }, [isConfirmed, hash, campaign.id, amount, address]);
+  }, [isConfirmed, hash, campaign.id, amount, address, queryClient]);
 
   if (!isOpen) return null;
 
