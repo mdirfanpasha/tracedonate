@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { SEED_CAMPAIGNS, MONAD_EXPLORER_URL } from "@/config/contracts";
+import { MONAD_EXPLORER_URL } from "@/config/contracts";
 import { MoneyFlowGraph } from "@/components/MoneyFlowGraph";
 import { DonationModal } from "@/components/DonationModal";
 import { ImpactReceiptModal } from "@/components/ImpactReceiptModal";
@@ -18,6 +18,7 @@ import {
   getExplorerAddressUrl,
 } from "@/lib/utils";
 import { getEvidenceForExpense } from "@/lib/supabase";
+import { useCampaignDetails } from "@/hooks/useTraceDonateContract";
 import {
   ShieldCheck,
   Coins,
@@ -38,9 +39,7 @@ export default function CampaignDetailPage() {
   const params = useParams();
   const campaignId = Number(params?.id) || 1;
 
-  const campaignData =
-    SEED_CAMPAIGNS.find((c) => c.id === campaignId) || SEED_CAMPAIGNS[0];
-  const [campaign, setCampaign] = useState<Campaign>(campaignData as unknown as Campaign);
+  const { campaign, refetch: refetchCampaign } = useCampaignDetails(campaignId);
 
   const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -87,41 +86,11 @@ export default function CampaignDetailPage() {
     setLastDonationTx(hash);
     setLastDonationAmount(amount);
     setIsReceiptOpen(true);
-
-    // Update local state to reflect donation
-    const newRaised = (parseFloat(campaign.totalRaised) + parseFloat(amount)).toFixed(3);
-    const newBal = (parseFloat(campaign.currentBalance) + parseFloat(amount)).toFixed(3);
-    setCampaign({
-      ...campaign,
-      totalRaised: newRaised,
-      currentBalance: newBal,
-    });
+    refetchCampaign();
   };
 
   const handleVerificationComplete = () => {
-    if (!selectedExpenseToVerify) return;
-    const updatedExpenses = (campaign.expenses || []).map((exp) => {
-      if (exp.id === selectedExpenseToVerify.id) {
-        return {
-          ...exp,
-          status: "Executed" as const,
-          executedAt: Math.floor(Date.now() / 1000),
-          txHash: "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
-        };
-      }
-      return exp;
-    });
-
-    const expAmt = parseFloat(selectedExpenseToVerify.amount);
-    const newBal = Math.max(0, parseFloat(campaign.currentBalance) - expAmt).toFixed(3);
-    const newSpent = (parseFloat(campaign.totalSpent) + expAmt).toFixed(3);
-
-    setCampaign({
-      ...campaign,
-      currentBalance: newBal,
-      totalSpent: newSpent,
-      expenses: updatedExpenses,
-    });
+    refetchCampaign();
     setSelectedExpenseToVerify(null);
   };
 

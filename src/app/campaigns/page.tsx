@@ -2,12 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { SEED_CAMPAIGNS, TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
+import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
 import { DonationModal } from "@/components/DonationModal";
 import { ImpactReceiptModal } from "@/components/ImpactReceiptModal";
 import { Campaign } from "@/lib/types";
 import { formatAddress } from "@/lib/utils";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAllCampaigns } from "@/hooks/useTraceDonateContract";
 import { parseEther } from "viem";
 import {
   Search,
@@ -55,9 +56,11 @@ export default function CampaignsPage() {
     isSuccess: isCreateSuccess,
   } = useWaitForTransactionReceipt({ hash: createHash });
 
+  const { campaigns, refetch: refetchCampaigns } = useAllCampaigns();
+
   const categories = ["All", "Disaster Relief", "Clean Water", "Healthcare", "Infrastructure", "Education"];
 
-  const filteredCampaigns = SEED_CAMPAIGNS.filter((c) => {
+  const filteredCampaigns = campaigns.filter((c) => {
     const matchesSearch =
       c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.description.toLowerCase().includes(searchQuery.toLowerCase());

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { SEED_CAMPAIGNS, TRACEDONATE_CONTRACT_ADDRESS, MONAD_EXPLORER_URL } from "@/config/contracts";
+import { TRACEDONATE_CONTRACT_ADDRESS, MONAD_EXPLORER_URL } from "@/config/contracts";
 import { TransactionBadge } from "@/components/TransactionBadge";
 import { formatAddress, formatDateTime, getCategoryColor, getExplorerAddressUrl } from "@/lib/utils";
+import { useAllCampaigns } from "@/hooks/useTraceDonateContract";
 import {
   Activity,
   ShieldCheck,
@@ -22,8 +23,9 @@ import {
 
 export default function TransparencyPage() {
   const [selectedFilterCategory, setSelectedFilterCategory] = useState("All");
+  const { campaigns } = useAllCampaigns();
 
-  const allExpenses = SEED_CAMPAIGNS.flatMap((c) =>
+  const allExpenses = campaigns.flatMap((c) =>
     (c.expenses || []).map((e) => ({
       ...e,
       campaignTitle: c.title,

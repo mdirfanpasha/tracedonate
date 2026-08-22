@@ -2,13 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { SEED_CAMPAIGNS, TRACEDONATE_CONTRACT_ADDRESS, MONAD_EXPLORER_URL } from "@/config/contracts";
+import { TRACEDONATE_CONTRACT_ADDRESS, MONAD_EXPLORER_URL } from "@/config/contracts";
 import { CreateExpenseModal } from "@/components/CreateExpenseModal";
 import { VerifyExpenseModal } from "@/components/VerifyExpenseModal";
 import { TransactionBadge } from "@/components/TransactionBadge";
 import { Campaign, Expense } from "@/lib/types";
 import { formatAddress, getCategoryColor, getExplorerAddressUrl } from "@/lib/utils";
 import { useAccount } from "wagmi";
+import { useAllCampaigns } from "@/hooks/useTraceDonateContract";
 import {
   Building2,
   ShieldCheck,
@@ -26,7 +27,7 @@ import {
 
 export default function OrgDashboardPage() {
   const { address, isConnected } = useAccount();
-  const [campaigns, setCampaigns] = useState<Campaign[]>(SEED_CAMPAIGNS as unknown as Campaign[]);
+  const { campaigns, refetch: refetchCampaigns } = useAllCampaigns();
   const [selectedCampaignForExpense, setSelectedCampaignForExpense] = useState<Campaign | null>(null);
   const [selectedExpenseToVerify, setSelectedExpenseToVerify] = useState<Expense | null>(null);
 
@@ -40,32 +41,7 @@ export default function OrgDashboardPage() {
   const totalInEscrow = campaigns.reduce((acc, c) => acc + parseFloat(c.currentBalance), 0).toFixed(3);
 
   const handleVerificationComplete = () => {
-    if (!selectedExpenseToVerify) return;
-    const updated = campaigns.map((c) => {
-      const updatedExpenses = (c.expenses || []).map((exp) => {
-        if (exp.id === selectedExpenseToVerify.id) {
-          return {
-            ...exp,
-            status: "Executed" as const,
-            executedAt: Math.floor(Date.now() / 1000),
-            txHash: "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
-          };
-        }
-        return exp;
-      });
-
-      const expAmt = parseFloat(selectedExpenseToVerify.amount);
-      const isTargetCampaign = c.id === selectedExpenseToVerify.campaignId;
-
-      return {
-        ...c,
-        expenses: updatedExpenses,
-        currentBalance: isTargetCampaign ? Math.max(0, parseFloat(c.currentBalance) - expAmt).toFixed(3) : c.currentBalance,
-        totalSpent: isTargetCampaign ? (parseFloat(c.totalSpent) + expAmt).toFixed(3) : c.totalSpent,
-      };
-    });
-
-    setCampaigns(updated);
+    refetchCampaigns();
     setSelectedExpenseToVerify(null);
   };
 

@@ -61,7 +61,7 @@ async function main() {
   }
 
   // Export contract address and ABI to frontend
-  const artifactPath = path.join(__dirname, "../artifacts/contracts/TraceDonate.sol/TraceDonate.json");
+  const artifactPath = path.join(__dirname, "../artifacts/contracts/src/TraceDonate.sol/TraceDonate.json");
   let abi = [];
   if (fs.existsSync(artifactPath)) {
     const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
