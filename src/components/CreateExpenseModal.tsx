@@ -24,7 +24,8 @@ interface CreateExpenseModalProps {
   campaign: Campaign;
   isOpen: boolean;
   onClose: () => void;
-  onExpenseCreated: () => void;
+  onExpenseCreated?: () => void;
+  onSuccess?: () => void;
 }
 
 export function CreateExpenseModal({
@@ -32,6 +33,7 @@ export function CreateExpenseModal({
   isOpen,
   onClose,
   onExpenseCreated,
+  onSuccess,
 }: CreateExpenseModalProps) {
   const [amount, setAmount] = useState("");
   const [recipientSupplier, setRecipientSupplier] = useState("");
@@ -151,7 +153,8 @@ export function CreateExpenseModal({
             <div className="pt-3">
               <button
                 onClick={() => {
-                  onExpenseCreated();
+                  if (onSuccess) onSuccess();
+                  if (onExpenseCreated) onExpenseCreated();
                   handleModalClose();
                 }}
                 className="px-6 py-2 rounded-xl bg-brand-500 text-background font-bold text-xs hover:opacity-95 transition-all"

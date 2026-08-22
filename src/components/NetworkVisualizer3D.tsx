@@ -1,32 +1,25 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-interface Node {
-  x: number;
-  y: number;
-  z: number;
-  baseX: number;
-  baseY: number;
+interface FlowStep {
   label: string;
-  sublabel: string;
-  type: "donor" | "vault" | "category" | "supplier" | "proof";
-  color: string;
-  size: number;
-  pulse: number;
-}
-
-interface Particle {
-  fromNode: number;
-  toNode: number;
-  progress: number;
-  speed: number;
-  color: string;
+  tag: string;
+  desc: string;
+  amount: string;
 }
 
 export function NetworkVisualizer3D() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [activeStep, setActiveStep] = useState<number>(0);
+
+  const steps: FlowStep[] = [
+    { label: "DONOR", tag: "0x3a79...a1b2", desc: "0.50 MON sent directly", amount: "0.50 MON" },
+    { label: "CAMPAIGN", tag: "TraceDonate.sol", desc: "Locked in smart contract escrow", amount: "100% On-Chain" },
+    { label: "PAYMENT", tag: "Verified Expense", desc: "Audited invoice released", amount: "0.25 MON" },
+    { label: "RECIPIENT", tag: "0x892a...1014", desc: "Supplier receives funds instantly", amount: "Direct Payout" },
+    { label: "PROOF", tag: "Monad Block #184209", desc: "Immutable public verification", amount: "Verified ✓" },
+  ];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -34,295 +27,151 @@ export function NetworkVisualizer3D() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let animationFrameId: number;
-    let width = (canvas.width = canvas.parentElement?.clientWidth || 800);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || 450);
+    let animId: number;
+    let width = (canvas.width = canvas.parentElement?.clientWidth || 700);
+    let height = (canvas.height = canvas.parentElement?.clientHeight || 280);
 
     const handleResize = () => {
       if (!canvas.parentElement) return;
       width = canvas.width = canvas.parentElement.clientWidth;
       height = canvas.height = canvas.parentElement.clientHeight;
-      initNodes();
     };
 
     window.addEventListener("resize", handleResize);
 
-    let mouseX = 0;
-    let mouseY = 0;
-    let targetMouseX = 0;
-    let targetMouseY = 0;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      targetMouseX = (e.clientX - rect.left - width / 2) * 0.05;
-      targetMouseY = (e.clientY - rect.top - height / 2) * 0.05;
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    let nodes: Node[] = [];
-    let connections: [number, number][] = [];
-    let particles: Particle[] = [];
-
-    const initNodes = () => {
-      const cx = width / 2;
-      const cy = height / 2;
-      const scaleX = Math.min(width / 900, 1);
-      const scaleY = Math.min(height / 450, 1);
-
-      nodes = [
-        // 0: Donor
-        {
-          x: cx - 340 * scaleX,
-          y: cy,
-          z: 0,
-          baseX: cx - 340 * scaleX,
-          baseY: cy,
-          label: "DONOR",
-          sublabel: "1.00 MON",
-          type: "donor",
-          color: "#00F5A0",
-          size: 26,
-          pulse: 0,
-        },
-        // 1: Campaign Vault (Escrow)
-        {
-          x: cx - 120 * scaleX,
-          y: cy,
-          z: 0,
-          baseX: cx - 120 * scaleX,
-          baseY: cy,
-          label: "MONAD ESCROW",
-          sublabel: "TraceDonate.sol",
-          type: "vault",
-          color: "#836EF9",
-          size: 32,
-          pulse: 0,
-        },
-        // 2: Food Expense
-        {
-          x: cx + 110 * scaleX,
-          y: cy - 90 * scaleY,
-          z: 0,
-          baseX: cx + 110 * scaleX,
-          baseY: cy - 90 * scaleY,
-          label: "FOOD RELIEF",
-          sublabel: "0.45 MON",
-          type: "category",
-          color: "#00F5A0",
-          size: 22,
-          pulse: 0,
-        },
-        // 3: Medical Supplies
-        {
-          x: cx + 110 * scaleX,
-          y: cy + 90 * scaleY,
-          z: 0,
-          baseX: cx + 110 * scaleX,
-          baseY: cy + 90 * scaleY,
-          label: "MEDICAL AID",
-          sublabel: "0.35 MON",
-          type: "category",
-          color: "#00D2FF",
-          size: 22,
-          pulse: 0,
-        },
-        // 4: Supplier Wallet 1
-        {
-          x: cx + 330 * scaleX,
-          y: cy - 90 * scaleY,
-          z: 0,
-          baseX: cx + 330 * scaleX,
-          baseY: cy - 90 * scaleY,
-          label: "VENDOR 0x892...1014",
-          sublabel: "Direct Settlement",
-          type: "supplier",
-          color: "#00F5A0",
-          size: 24,
-          pulse: 0,
-        },
-        // 5: Supplier Wallet 2
-        {
-          x: cx + 330 * scaleX,
-          y: cy + 90 * scaleY,
-          z: 0,
-          baseX: cx + 330 * scaleX,
-          baseY: cy + 90 * scaleY,
-          label: "CLINIC 0x28a...05f2",
-          sublabel: "Direct Settlement",
-          type: "supplier",
-          color: "#00D2FF",
-          size: 24,
-          pulse: 0,
-        },
-      ];
-
-      connections = [
-        [0, 1], // Donor -> Escrow
-        [1, 2], // Escrow -> Food
-        [1, 3], // Escrow -> Medical
-        [2, 4], // Food -> Supplier 1
-        [3, 5], // Medical -> Supplier 2
-      ];
-
-      particles = [
-        { fromNode: 0, toNode: 1, progress: 0.1, speed: 0.008, color: "#00F5A0" },
-        { fromNode: 0, toNode: 1, progress: 0.6, speed: 0.008, color: "#00F5A0" },
-        { fromNode: 1, toNode: 2, progress: 0.2, speed: 0.009, color: "#836EF9" },
-        { fromNode: 1, toNode: 3, progress: 0.7, speed: 0.009, color: "#836EF9" },
-        { fromNode: 2, toNode: 4, progress: 0.4, speed: 0.010, color: "#00F5A0" },
-        { fromNode: 3, toNode: 5, progress: 0.5, speed: 0.010, color: "#00D2FF" },
-      ];
-    };
-
-    initNodes();
+    // Particle flow
+    const particles: { x: number; y: number; progress: number; speed: number }[] = [];
+    for (let i = 0; i < 20; i++) {
+      particles.push({
+        x: 0,
+        y: 0,
+        progress: Math.random(),
+        speed: 0.003 + Math.random() * 0.003,
+      });
+    }
 
     let time = 0;
 
     const render = () => {
       time += 0.02;
-      mouseX += (targetMouseX - mouseX) * 0.05;
-      mouseY += (targetMouseY - mouseY) * 0.05;
-
       ctx.clearRect(0, 0, width, height);
 
-      // Subtle background grid
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
-      ctx.lineWidth = 1;
-      const gridSize = 40;
-      for (let x = 0; x < width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
+      // Node positions
+      const count = steps.length;
+      const padding = Math.min(60, width * 0.08);
+      const availableWidth = width - padding * 2;
+      const stepX = availableWidth / (count - 1);
+      const centerY = height / 2;
+
+      const nodePositions: { x: number; y: number }[] = [];
+      for (let i = 0; i < count; i++) {
+        const nx = padding + i * stepX;
+        const wave = Math.sin(time + i * 0.8) * 4;
+        nodePositions.push({ x: nx, y: centerY + wave });
       }
 
-      // Update node positions with gentle floating and mouse parallax
-      nodes.forEach((node, i) => {
-        const floatX = Math.sin(time + i * 1.5) * 3;
-        const floatY = Math.cos(time + i * 1.2) * 4;
-        node.x = node.baseX + floatX + mouseX * (1 + (i % 3) * 0.3);
-        node.y = node.baseY + floatY + mouseY * (1 + (i % 3) * 0.3);
-        node.pulse = Math.sin(time * 2 + i) * 0.5 + 0.5;
-      });
+      // Draw subtle connecting background track
+      ctx.beginPath();
+      ctx.moveTo(nodePositions[0].x, nodePositions[0].y);
+      for (let i = 1; i < count; i++) {
+        const prev = nodePositions[i - 1];
+        const curr = nodePositions[i];
+        const cx = (prev.x + curr.x) / 2;
+        ctx.bezierCurveTo(cx, prev.y, cx, curr.y, curr.x, curr.y);
+      }
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-      // Draw Connections with glowing gradient lines
-      connections.forEach(([fromIdx, toIdx]) => {
-        const from = nodes[fromIdx];
-        const to = nodes[toIdx];
-
-        const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
-        grad.addColorStop(0, `${from.color}44`);
-        grad.addColorStop(0.5, "rgba(255, 255, 255, 0.2)");
-        grad.addColorStop(1, `${to.color}44`);
-
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(from.x, from.y);
-        ctx.lineTo(to.x, to.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      });
-
-      // Draw moving money flow particles
+      // Flowing glowing particles along track
       particles.forEach((p) => {
         p.progress += p.speed;
         if (p.progress > 1) p.progress = 0;
 
-        const from = nodes[p.fromNode];
-        const to = nodes[p.toNode];
-        const px = from.x + (to.x - from.x) * p.progress;
-        const py = from.y + (to.y - from.y) * p.progress;
+        const totalSegments = count - 1;
+        const currentSegment = Math.floor(p.progress * totalSegments);
+        const segmentProgress = (p.progress * totalSegments) % 1;
 
-        // Glow
-        const radGrad = ctx.createRadialGradient(px, py, 1, px, py, 8);
-        radGrad.addColorStop(0, p.color);
-        radGrad.addColorStop(1, "transparent");
-        ctx.fillStyle = radGrad;
-        ctx.beginPath();
-        ctx.arc(px, py, 8, 0, Math.PI * 2);
-        ctx.fill();
+        if (currentSegment < totalSegments) {
+          const p1 = nodePositions[currentSegment];
+          const p2 = nodePositions[currentSegment + 1];
 
-        // Core dot
-        ctx.fillStyle = "#FFFFFF";
-        ctx.beginPath();
-        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-        ctx.fill();
+          // Cubic bezier interpolation
+          const cx = (p1.x + p2.x) / 2;
+          const t = segmentProgress;
+          const px = (1 - t) * (1 - t) * (1 - t) * p1.x + 3 * (1 - t) * (1 - t) * t * cx + 3 * (1 - t) * t * t * cx + t * t * t * p2.x;
+          const py = (1 - t) * (1 - t) * (1 - t) * p1.y + 3 * (1 - t) * (1 - t) * t * p1.y + 3 * (1 - t) * t * t * p2.y + t * t * t * p2.y;
+
+          ctx.beginPath();
+          ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(16, 185, 129, 0.85)";
+          ctx.shadowColor = "#10b981";
+          ctx.shadowBlur = 8;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
       });
 
       // Draw Nodes
-      nodes.forEach((node) => {
-        // Outer glowing pulse
-        const pulseSize = node.size + node.pulse * 8;
-        const glowGrad = ctx.createRadialGradient(node.x, node.y, node.size * 0.6, node.x, node.y, pulseSize + 12);
-        glowGrad.addColorStop(0, `${node.color}33`);
-        glowGrad.addColorStop(1, "transparent");
+      nodePositions.forEach((pos, idx) => {
+        const isCurrentActive = Math.floor((time * 0.8) % count) === idx;
 
-        ctx.fillStyle = glowGrad;
+        // Outer subtle pulse ring
         ctx.beginPath();
-        ctx.arc(node.x, node.y, pulseSize + 12, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, isCurrentActive ? 18 : 12, 0, Math.PI * 2);
+        ctx.fillStyle = isCurrentActive ? "rgba(16, 185, 129, 0.12)" : "rgba(255, 255, 255, 0.03)";
         ctx.fill();
-
-        // Base card/circle
-        ctx.fillStyle = "#0F1420";
-        ctx.strokeStyle = node.color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.strokeStyle = isCurrentActive ? "rgba(16, 185, 129, 0.5)" : "rgba(255, 255, 255, 0.12)";
+        ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Inner glowing core
-        ctx.fillStyle = `${node.color}22`;
+        // Inner solid core
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.size * 0.7, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = isCurrentActive ? "#10b981" : "#e2e8f0";
+        if (isCurrentActive) {
+          ctx.shadowColor = "#10b981";
+          ctx.shadowBlur = 10;
+        }
         ctx.fill();
-
-        // Node Label
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        ctx.font = "bold 10px Inter, system-ui, sans-serif";
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillText(node.label, node.x, node.y + node.size + 14);
-
-        ctx.font = "9px 'JetBrains Mono', monospace";
-        ctx.fillStyle = "#94A3B8";
-        ctx.fillText(node.sublabel, node.x, node.y + node.size + 26);
+        ctx.shadowBlur = 0;
       });
 
-      animationFrameId = requestAnimationFrame(render);
+      animId = requestAnimationFrame(render);
     };
 
     render();
 
     return () => {
+      cancelAnimationFrame(animId);
       window.removeEventListener("resize", handleResize);
-      window.removeEventListener("mousemove", handleMouseMove);
-      cancelAnimationFrame(animationFrameId);
     };
-  }, []);
+  }, [steps.length]);
 
   return (
-    <div ref={containerRef} className="relative w-full h-[380px] sm:h-[440px] rounded-2xl overflow-hidden bg-surface-card/70 border border-surface-border backdrop-blur-md shadow-2xl">
-      <canvas ref={canvasRef} className="w-full h-full block" />
-      
-      {/* Live state badge */}
-      <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface/90 border border-surface-border text-[11px] font-mono text-text-secondary backdrop-blur-md shadow-sm">
-        <span className="w-2 h-2 rounded-full bg-brand-500 animate-ping" />
-        <span className="text-text-primary font-medium">Live Monad Execution Trail</span>
+    <div className="w-full rounded-2xl border border-white/[0.08] bg-[#0C0F17]/80 backdrop-blur-xl p-6 md:p-8 space-y-6 shadow-2xl">
+      {/* Visual Canvas */}
+      <div className="relative w-full h-36 md:h-44 overflow-hidden">
+        <canvas ref={canvasRef} className="w-full h-full block" />
       </div>
 
-      <div className="absolute bottom-4 right-4 text-[10px] font-mono text-text-muted bg-surface/80 px-2.5 py-1 rounded border border-surface-border">
-        Smart Contract Escrow Protected
+      {/* Step Sequence Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 md:gap-3 pt-2 border-t border-white/[0.06]">
+        {steps.map((step, idx) => (
+          <div
+            key={step.label}
+            className="p-3 rounded-xl bg-surface/50 border border-white/[0.05] space-y-1 hover:border-emerald-500/30 transition-colors"
+          >
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="font-semibold text-white tracking-wider">{step.label}</span>
+              <span className="text-emerald-400 font-bold">{idx + 1}</span>
+            </div>
+            <p className="text-[11px] text-slate-400 line-clamp-1">{step.desc}</p>
+            <div className="text-[10px] font-mono text-emerald-400 font-medium truncate pt-0.5">
+              {step.amount}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

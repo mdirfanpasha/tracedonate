@@ -25,7 +25,8 @@ interface VerifyExpenseModalProps {
   expense: Expense | null;
   isOpen: boolean;
   onClose: () => void;
-  onVerificationComplete: () => void;
+  onVerificationComplete?: () => void;
+  onSuccess?: () => void;
 }
 
 export function VerifyExpenseModal({
@@ -33,6 +34,7 @@ export function VerifyExpenseModal({
   isOpen,
   onClose,
   onVerificationComplete,
+  onSuccess,
 }: VerifyExpenseModalProps) {
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
@@ -127,7 +129,8 @@ export function VerifyExpenseModal({
             <div className="pt-3">
               <button
                 onClick={() => {
-                  onVerificationComplete();
+                  if (onSuccess) onSuccess();
+                  if (onVerificationComplete) onVerificationComplete();
                   handleModalClose();
                 }}
                 className="px-6 py-2 rounded-xl bg-brand-500 text-background font-bold text-xs hover:opacity-95 transition-all"

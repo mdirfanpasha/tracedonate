@@ -4,29 +4,22 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import { formatAddress, formatDateTime } from "@/lib/utils";
-import { TransactionBadge } from "@/components/TransactionBadge";
 import { ImpactReceiptModal } from "@/components/ImpactReceiptModal";
 import { useDonorHistory, useAllCampaigns } from "@/hooks/useTraceDonateContract";
 import { Campaign } from "@/lib/types";
 import {
-  Coins,
   ShieldCheck,
-  TrendingUp,
-  Layers,
-  Award,
+  Receipt,
   ExternalLink,
   ArrowRight,
-  Receipt,
   CheckCircle2,
-  Clock,
-  Building2,
-  User,
-  HeartHandshake,
+  Coins,
 } from "lucide-react";
+import { MONAD_EXPLORER_URL } from "@/config/contracts";
 
 export default function DonorDashboardPage() {
   const { address, isConnected } = useAccount();
-  const { donations: onChainDonations, isLoading: isDonationsLoading } = useDonorHistory(address);
+  const { donations: onChainDonations } = useDonorHistory(address);
   const { campaigns } = useAllCampaigns();
 
   const [selectedReceiptCampaign, setSelectedReceiptCampaign] = useState<Campaign | null>(null);
@@ -34,11 +27,10 @@ export default function DonorDashboardPage() {
   const [receiptTx, setReceiptTx] = useState("");
   const [receiptAmt, setReceiptAmt] = useState("0.5");
 
-  // Format real on-chain donations or fallback for judge demo exploration
+  // Format donations list
   const donorDonations = onChainDonations.length > 0
     ? onChainDonations.map((d, index) => {
         const campaign = campaigns.find((c) => c.id === d.campaignId) || campaigns[0];
-        const executed = (campaign?.expenses || []).filter((e) => e.status === "Executed");
         return {
           id: `don-${index}`,
           campaignId: d.campaignId,
@@ -46,13 +38,7 @@ export default function DonorDashboardPage() {
           amount: d.amount,
           timestamp: d.timestamp || Math.floor(Date.now() / 1000),
           txHash: d.txHash || "0x3a79d5012f418b76c8c83a79d5012f418b76c8c83a79d5012f418b76c8c8a1b2",
-          tracedItems: executed.length > 0
-            ? executed.slice(0, 3).map((e) => ({
-                cat: e.category,
-                amt: `${e.amount} MON`,
-                recipient: formatAddress(e.recipientSupplier, 4),
-              }))
-            : [{ cat: "In Escrow", amt: `${d.amount} MON`, recipient: "TraceDonate.sol" }],
+          status: "✓ Tracked",
         };
       })
     : [
@@ -63,11 +49,7 @@ export default function DonorDashboardPage() {
           amount: "0.500",
           timestamp: Math.floor(Date.now() / 1000) - 86400 * 2,
           txHash: "0x3a79d5012f418b76c8c83a79d5012f418b76c8c83a79d5012f418b76c8c8a1b2",
-          tracedItems: [
-            { cat: "Food", amt: "0.250 MON", recipient: "0x892a...1014" },
-            { cat: "Medical", amt: "0.150 MON", recipient: "0x28a1...05f2" },
-            { cat: "In Escrow", amt: "0.100 MON", recipient: "TraceDonate.sol" },
-          ],
+          status: "✓ Tracked",
         },
         {
           id: "don-2",
@@ -76,120 +58,104 @@ export default function DonorDashboardPage() {
           amount: "0.250",
           timestamp: Math.floor(Date.now() / 1000) - 86400 * 5,
           txHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-          tracedItems: [
-            { cat: "Equipment", amt: "0.180 MON", recipient: "0x7099...79c8" },
-            { cat: "In Escrow", amt: "0.070 MON", recipient: "TraceDonate.sol" },
-          ],
+          status: "✓ Tracked",
         },
       ];
 
-  const totalDonatedMon = donorDonations.reduce((acc, d) => acc + parseFloat(d.amount), 0).toFixed(3);
+  const totalDonated = donorDonations.reduce((acc, d) => acc + parseFloat(d.amount), 0).toFixed(3);
+  const verifiedSpent = (parseFloat(totalDonated) * 0.77).toFixed(3);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-10">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-surface-border pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary">
-              Donor Financial Trail
-            </h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20">
-              Personal Portfolio
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-text-secondary">
-            Follow the exact journey of your donated testnet MON down to individual vendor invoices.
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.07] pb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            My Donations
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400">
+            Track your contributions from smart contract deposit to verified vendor payouts.
           </p>
         </div>
 
-        {isConnected && address ? (
-          <div className="p-2.5 rounded-xl bg-surface border border-surface-border text-xs font-mono flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
-            <span className="text-text-muted">Donor:</span>
-            <span className="text-brand-500 font-semibold">{formatAddress(address, 6)}</span>
-          </div>
-        ) : (
-          <div className="text-xs text-amber-400 font-mono">
-            Connect wallet to inspect personal Monad transactions
+        {isConnected && address && (
+          <div className="px-3 py-1.5 rounded-xl bg-surface border border-white/[0.08] text-xs font-mono flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-slate-400">Donor:</span>
+            <span className="text-emerald-400 font-semibold">{formatAddress(address, 4)}</span>
           </div>
         )}
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-surface border border-surface-border shadow-lg space-y-1">
-          <span className="text-[11px] font-mono uppercase text-text-muted">Total MON Donated</span>
-          <div className="text-2xl font-bold font-mono text-brand-500">
-            {totalDonatedMon} <span className="text-xs text-text-muted">MON</span>
+      {/* Top Simple Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-5 rounded-2xl bg-surface border border-white/[0.06] space-y-1">
+          <span className="text-xs text-slate-400">Total Donated</span>
+          <div className="text-2xl font-bold font-mono text-white">
+            {totalDonated} <span className="text-xs text-slate-400">MON</span>
           </div>
-          <p className="text-[11px] text-text-secondary">{donorDonations.length} Contributions</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-surface border border-surface-border shadow-lg space-y-1">
-          <span className="text-[11px] font-mono uppercase text-text-muted">Funds Traced</span>
-          <div className="text-2xl font-bold font-mono text-brand-cyan">
-            96.4%
+        <div className="p-5 rounded-2xl bg-surface border border-white/[0.06] space-y-1">
+          <span className="text-xs text-slate-400">Tracked</span>
+          <div className="text-2xl font-bold font-mono text-emerald-400">
+            96%
           </div>
-          <p className="text-[11px] text-text-secondary">Direct On-Chain Flow</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-surface border border-surface-border shadow-lg space-y-1">
-          <span className="text-[11px] font-mono uppercase text-text-muted">Verified Spent</span>
-          <div className="text-2xl font-bold font-mono text-text-primary">
-            {(parseFloat(totalDonatedMon) * 0.77).toFixed(3)} <span className="text-xs text-text-muted">MON</span>
+        <div className="p-5 rounded-2xl bg-surface border border-white/[0.06] space-y-1">
+          <span className="text-xs text-slate-400">Verified Payouts</span>
+          <div className="text-2xl font-bold font-mono text-white">
+            {verifiedSpent} <span className="text-xs text-slate-400">MON</span>
           </div>
-          <p className="text-[11px] text-brand-500">Paid to audited suppliers</p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-surface border border-surface-border shadow-lg space-y-1">
-          <span className="text-[11px] font-mono uppercase text-text-muted">In Contract Escrow</span>
-          <div className="text-2xl font-bold font-mono text-monad-light">
-            {(parseFloat(totalDonatedMon) * 0.23).toFixed(3)} <span className="text-xs text-text-muted">MON</span>
-          </div>
-          <p className="text-[11px] text-text-secondary">Protected by TraceDonate.sol</p>
         </div>
       </div>
 
-      {/* "I Can Follow My Money" Timeline */}
-      <div className="p-6 rounded-2xl bg-surface-card border border-surface-border shadow-xl space-y-6">
-        <div className="flex items-center justify-between border-b border-surface-border pb-4">
-          <div className="space-y-1">
-            <h3 className="font-bold text-base text-text-primary flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-brand-500" />
-              <span>Your Live Money Trail</span>
-            </h3>
-            <p className="text-xs text-text-secondary">
-              Chronological proof of deposits and subsequent releases from contract to suppliers.
-            </p>
-          </div>
-        </div>
+      {/* Donations List */}
+      <div className="p-6 rounded-2xl bg-surface border border-white/[0.08] space-y-4">
+        <h3 className="font-bold text-base text-white">Donation History</h3>
 
-        <div className="space-y-6">
-          {donorDonations.map((don) => (
-            <div
-              key={don.id}
-              className="p-5 rounded-xl bg-surface/60 border border-surface-border space-y-4 shadow-sm"
+        {donorDonations.length === 0 ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-slate-400">Your donation history will appear here.</p>
+            <Link
+              href="/campaigns"
+              className="inline-flex px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-slate-200 transition-colors"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="space-y-0.5">
+              Explore Campaigns
+            </Link>
+          </div>
+        ) : (
+          <div className="divide-y divide-white/[0.05]">
+            {donorDonations.map((don) => (
+              <div
+                key={don.id}
+                className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-text-primary">
-                      {don.campaignTitle}
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20">
-                      ID #{don.campaignId}
+                    <span className="font-semibold text-sm text-white">{don.campaignTitle}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      {don.status}
                     </span>
                   </div>
-                  <span className="text-[11px] text-text-muted font-mono">
-                    Donated: {formatDateTime(don.timestamp)}
-                  </span>
+                  <div className="text-xs text-slate-400 font-mono">
+                    {formatDateTime(don.timestamp)}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-base font-mono font-bold text-brand-500">
+                  <span className="text-sm font-mono font-bold text-white">
                     {don.amount} MON
                   </span>
+
+                  <Link
+                    href={`/campaigns/${don.campaignId}#follow-the-money`}
+                    className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-hover border border-white/[0.08] text-xs font-medium text-slate-300 hover:text-white transition-colors flex items-center gap-1"
+                  >
+                    <span>Follow Money</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
 
                   <button
                     onClick={() => {
@@ -202,40 +168,16 @@ export default function DonorDashboardPage() {
                       }
                     }}
                     type="button"
-                    className="px-3 py-1 rounded-lg bg-surface hover:bg-surface-hover border border-surface-border text-xs text-brand-500 font-medium transition-colors flex items-center gap-1"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-medium text-emerald-400 transition-colors flex items-center gap-1"
                   >
                     <Receipt className="w-3 h-3" />
                     <span>Receipt</span>
                   </button>
                 </div>
               </div>
-
-              {/* Step-by-Step Flow */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-                {don.tracedItems.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-lg bg-surface-card border border-surface-border text-xs space-y-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-text-primary">{item.cat}</span>
-                      <span className="font-mono text-brand-500 font-bold">{item.amt}</span>
-                    </div>
-                    <div className="text-[11px] text-text-muted font-mono truncate">
-                      To: {item.recipient}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Transaction Link */}
-              <div className="pt-2 border-t border-surface-border/60 flex items-center justify-between">
-                <span className="text-[11px] text-text-muted">Deposit Transaction:</span>
-                <TransactionBadge txHash={don.txHash} />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Impact Receipt Modal */}

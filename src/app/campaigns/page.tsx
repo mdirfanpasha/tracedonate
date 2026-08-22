@@ -3,60 +3,37 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { TRACEDONATE_CONTRACT_ADDRESS, TRACEDONATE_ABI } from "@/config/contracts";
-import { DonationModal } from "@/components/DonationModal";
-import { ImpactReceiptModal } from "@/components/ImpactReceiptModal";
-import { Campaign } from "@/lib/types";
-import { formatAddress } from "@/lib/utils";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useAllCampaigns } from "@/hooks/useTraceDonateContract";
 import { parseEther } from "viem";
-import {
-  Search,
-  Filter,
-  Plus,
-  Coins,
-  ShieldCheck,
-  ArrowRight,
-  TrendingUp,
-  X,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-} from "lucide-react";
+import { Search, PlusCircle, ArrowRight, X } from "lucide-react";
 
 export default function CampaignsPage() {
+  const { campaigns, refetch: refetchCampaigns } = useAllCampaigns();
+  const { isConnected } = useAccount();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
-  const [isDonationOpen, setIsDonationOpen] = useState(false);
-  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
-  const [lastDonationTx, setLastDonationTx] = useState("");
-  const [lastDonationAmount, setLastDonationAmount] = useState("0.05");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Create Campaign Modal State
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [newGoal, setNewGoal] = useState("25");
-  const [newCategory, setNewCategory] = useState("Disaster Relief");
-  const [newImage, setNewImage] = useState("https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80");
-
-  const { isConnected } = useAccount();
+  // Form State for creating a campaign
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [goal, setGoal] = useState("");
+  const [category, setCategory] = useState("Disaster Relief");
+  const [imageUri, setImageUri] = useState("");
 
   const {
     data: createHash,
+    writeContract: createCampaignContract,
     isPending: isCreatePending,
     error: createError,
-    writeContract: writeCreateCampaign,
-    reset: resetCreate,
   } = useWriteContract();
 
   const {
     isLoading: isCreateConfirming,
     isSuccess: isCreateSuccess,
   } = useWaitForTransactionReceipt({ hash: createHash });
-
-  const { campaigns, refetch: refetchCampaigns } = useAllCampaigns();
 
   const categories = ["All", "Disaster Relief", "Clean Water", "Healthcare", "Infrastructure", "Education"];
 
@@ -70,77 +47,66 @@ export default function CampaignsPage() {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle || !newDesc || !newGoal) return;
+    if (!title || !description || !goal) return;
 
-    try {
-      writeCreateCampaign({
-        address: TRACEDONATE_CONTRACT_ADDRESS,
-        abi: TRACEDONATE_ABI,
-        functionName: "createCampaign",
-        args: [
-          newTitle,
-          newDesc,
-          parseEther(newGoal),
-          newCategory,
-          newImage,
-        ],
-      });
-    } catch (err) {
-      console.error("Create campaign error:", err);
-    }
+    createCampaignContract({
+      address: TRACEDONATE_CONTRACT_ADDRESS,
+      abi: TRACEDONATE_ABI,
+      functionName: "createCampaign",
+      args: [
+        title,
+        description,
+        parseEther(goal),
+        category,
+        imageUri || "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80",
+      ],
+    });
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-surface-border pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary">
-              Fundraising Campaigns
-            </h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20">
-              On-Chain Escrow
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-text-secondary">
-            Select a campaign to inspect itemized spending proofs or contribute testnet MON.
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.07] pb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            Transparent Campaigns
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400">
+            Select a campaign to donate and trace funds down to supplier invoices.
           </p>
         </div>
 
         <button
-          onClick={() => setIsCreateOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-500 to-brand-400 text-background font-bold text-xs shadow-md shadow-brand-500/10 hover:opacity-95 transition-all flex items-center gap-1.5 self-start sm:self-auto"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-slate-200 transition-colors flex items-center gap-1.5 shadow-sm"
         >
-          <Plus className="w-4 h-4" />
-          <span>Launch Campaign</span>
+          <PlusCircle className="w-4 h-4" />
+          <span>New Campaign</span>
         </button>
       </div>
 
-      {/* Search & Category Filter */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Search Bar */}
-        <div className="relative w-full md:w-96">
-          <Search className="w-4 h-4 text-text-muted absolute left-3.5 top-3" />
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search campaigns, causes, categories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-surface-border text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-500/60 transition-colors"
+            placeholder="Search campaigns..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-surface border border-white/[0.08] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
           />
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+              className={`px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${
                 selectedCategory === cat
-                  ? "bg-brand-500/20 text-brand-500 border border-brand-500/40 shadow-sm"
-                  : "bg-surface text-text-secondary border border-surface-border hover:text-text-primary"
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                  : "bg-surface border border-white/[0.06] text-slate-400 hover:text-white"
               }`}
             >
               {cat}
@@ -149,250 +115,172 @@ export default function CampaignsPage() {
         </div>
       </div>
 
-      {/* Campaigns Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Campaign Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCampaigns.map((campaign) => {
-          const pct = Math.min(
-            100,
-            Math.round((parseFloat(campaign.totalRaised) / parseFloat(campaign.goal)) * 100)
-          );
+          const raised = parseFloat(campaign.totalRaised);
+          const goal = parseFloat(campaign.goal);
+          const percent = Math.min(100, Math.round((raised / (goal || 1)) * 100));
 
           return (
-            <div
+            <Link
               key={campaign.id}
-              className="rounded-2xl bg-surface-card border border-surface-border hover:border-brand-500/40 transition-all overflow-hidden flex flex-col justify-between shadow-xl group"
+              href={`/campaigns/${campaign.id}`}
+              className="group p-5 rounded-2xl bg-surface border border-white/[0.06] hover:border-emerald-500/30 transition-all flex flex-col justify-between space-y-4"
             >
-              <div className="space-y-4">
-                {/* Image */}
-                <div className="relative h-48 w-full overflow-hidden bg-surface">
+              <div className="space-y-3">
+                <div className="relative h-40 rounded-xl overflow-hidden bg-slate-800">
                   <img
                     src={campaign.imageUri}
                     alt={campaign.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-background/80 backdrop-blur-md border border-surface-border text-[10px] font-mono text-brand-500">
+                  <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-mono text-emerald-400 border border-white/10">
                     {campaign.category}
                   </div>
-                  <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-surface/90 text-text-muted text-[10px] font-mono border border-surface-border">
-                    ID #{campaign.id}
-                  </div>
                 </div>
 
-                {/* Content */}
-                <div className="p-5 space-y-3">
-                  <h3 className="font-bold text-base text-text-primary line-clamp-1">
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-base text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
                     {campaign.title}
                   </h3>
-                  <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
                     {campaign.description}
                   </p>
-
-                  {/* Goal Progress */}
-                  <div className="space-y-1.5 pt-2">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-brand-500 font-bold">{campaign.totalRaised} MON</span>
-                      <span className="text-text-muted">{campaign.goal} MON Goal</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-surface border border-surface-border overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-brand-500 to-brand-cyan rounded-full transition-all duration-1000"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Fund Allocation Stats */}
-                  <div className="p-2.5 rounded-xl bg-surface/70 border border-surface-border flex items-center justify-between text-xs font-mono">
-                    <span className="text-text-muted">Spent to Suppliers:</span>
-                    <span className="text-brand-cyan font-bold">{campaign.totalSpent} MON</span>
-                  </div>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="p-5 pt-0 grid grid-cols-2 gap-3">
-                <Link
-                  href={`/campaigns/${campaign.id}`}
-                  className="py-2.5 rounded-xl bg-surface hover:bg-surface-hover border border-surface-border text-center text-xs font-semibold text-text-primary transition-colors flex items-center justify-center gap-1"
-                >
-                  <span>Follow Money</span>
-                  <ArrowRight className="w-3.5 h-3.5 opacity-60" />
-                </Link>
+              <div className="space-y-2 pt-2 border-t border-white/[0.05]">
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-white font-bold">{campaign.totalRaised} MON</span>
+                  <span className="text-slate-400">of {campaign.goal} MON</span>
+                </div>
 
-                <button
-                  onClick={() => {
-                    setSelectedCampaign(campaign as unknown as Campaign);
-                    setIsDonationOpen(true);
-                  }}
-                  type="button"
-                  className="py-2.5 rounded-xl bg-brand-500 hover:opacity-95 text-background font-bold text-xs shadow-md shadow-brand-500/10 transition-all flex items-center justify-center gap-1"
-                >
-                  <Coins className="w-3.5 h-3.5" />
-                  <span>Donate MON</span>
-                </button>
+                <div className="w-full h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                  <span>{percent}% funded • 128 donors</span>
+                  <span className="text-emerald-400 font-medium group-hover:underline flex items-center gap-1">
+                    <span>View Campaign</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </span>
+                </div>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
 
       {/* Create Campaign Modal */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in-50">
-          <div
-            className="relative w-full max-w-lg rounded-2xl bg-surface-card border border-surface-border p-6 shadow-2xl space-y-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-surface-border pb-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-brand-500" />
-                <h3 className="font-bold text-base text-text-primary">
-                  Deploy New Campaign on Monad
-                </h3>
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl bg-[#0F1420] border border-white/[0.08] p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+              <div>
+                <h3 className="font-bold text-base text-white">Create New Campaign</h3>
+                <p className="text-xs text-slate-400">Deploy a transparent escrow campaign on Monad</p>
               </div>
               <button
-                onClick={() => {
-                  resetCreate();
-                  setIsCreateOpen(false);
-                }}
-                className="p-1 rounded-lg text-text-muted hover:text-text-primary"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {isCreateSuccess ? (
-              <div className="py-6 text-center space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-brand-500 mx-auto" />
-                <h4 className="font-bold text-base text-text-primary">
-                  Campaign Created on Monad!
-                </h4>
-                <p className="text-xs text-text-secondary">
-                  Your smart contract campaign is now active and ready to receive testnet MON.
-                </p>
+            <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Campaign Title</label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Flood Relief Emergency Fund"
+                  className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Description</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Explain the purpose and verified expenditure plan..."
+                  className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Goal (MON)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value)}
+                    placeholder="e.g. 50"
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Disaster Relief">Disaster Relief</option>
+                    <option value="Clean Water">Clean Water</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Infrastructure">Infrastructure</option>
+                    <option value="Education">Education</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Cover Image URL (optional)</label>
+                <input
+                  type="url"
+                  value={imageUri}
+                  onChange={(e) => setImageUri(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 rounded-xl bg-surface border border-white/[0.08] text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="pt-2">
                 <button
-                  onClick={() => {
-                    resetCreate();
-                    setIsCreateOpen(false);
-                  }}
-                  className="px-6 py-2 rounded-xl bg-brand-500 text-background font-bold text-xs"
+                  type="submit"
+                  disabled={isCreatePending || isCreateConfirming}
+                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs transition-colors disabled:opacity-50"
                 >
-                  Close
+                  {isCreatePending
+                    ? "Confirm in Wallet..."
+                    : isCreateConfirming
+                    ? "Deploying on Monad..."
+                    : "Deploy Campaign on Monad"}
                 </button>
               </div>
-            ) : (
-              <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-text-secondary">Campaign Title *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Earthquake Emergency Relief 2026"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-border text-text-primary text-xs focus:outline-none focus:border-brand-500/60"
-                  />
+
+              {isCreateSuccess && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-center font-medium">
+                  ✓ Campaign deployed successfully on Monad!
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-text-secondary">Description & Objectives *</label>
-                  <textarea
-                    required
-                    rows={2}
-                    placeholder="Detailed explanation of the relief effort..."
-                    value={newDesc}
-                    onChange={(e) => setNewDesc(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-surface border border-surface-border text-text-primary text-xs focus:outline-none focus:border-brand-500/60"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-text-secondary">Goal (MON) *</label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      placeholder="50"
-                      value={newGoal}
-                      onChange={(e) => setNewGoal(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-border text-text-primary font-mono text-xs focus:outline-none focus:border-brand-500/60"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-text-secondary">Category *</label>
-                    <select
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-surface border border-surface-border text-text-primary text-xs focus:outline-none focus:border-brand-500/60"
-                    >
-                      <option value="Disaster Relief">Disaster Relief</option>
-                      <option value="Clean Water">Clean Water</option>
-                      <option value="Healthcare">Healthcare</option>
-                      <option value="Infrastructure">Infrastructure</option>
-                      <option value="Education">Education</option>
-                    </select>
-                  </div>
-                </div>
-
-                {createError && (
-                  <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
-                    {createError.message?.slice(0, 150)}
-                  </div>
-                )}
-
-                <div className="pt-2 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsCreateOpen(false)}
-                    className="w-1/3 py-2.5 rounded-xl bg-surface border border-surface-border text-text-secondary font-semibold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreatePending || isCreateConfirming}
-                    className="w-2/3 py-2.5 rounded-xl bg-brand-500 text-background font-bold shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    {isCreatePending || isCreateConfirming ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Deploying on Monad...</span>
-                      </>
-                    ) : (
-                      <span>Deploy Campaign</span>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
+              )}
+            </form>
           </div>
         </div>
-      )}
-
-      {/* Donation & Impact Modals */}
-      {selectedCampaign && (
-        <DonationModal
-          campaign={selectedCampaign}
-          isOpen={isDonationOpen}
-          onClose={() => setIsDonationOpen(false)}
-          onDonationSuccess={(hash, amount) => {
-            setLastDonationTx(hash);
-            setLastDonationAmount(amount);
-            setIsReceiptOpen(true);
-          }}
-        />
-      )}
-
-      {selectedCampaign && (
-        <ImpactReceiptModal
-          isOpen={isReceiptOpen}
-          onClose={() => setIsReceiptOpen(false)}
-          campaign={selectedCampaign}
-          donationAmount={lastDonationAmount}
-          txHash={lastDonationTx}
-        />
       )}
     </div>
   );
