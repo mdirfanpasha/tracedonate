@@ -7,7 +7,7 @@
 
 ## 🌟 Live Application & Contract Links
 
-- **Live Local App:** [http://localhost:3000](http://localhost:3000)
+- **Live Public Website:** [https://tracedonate.vercel.app](https://tracedonate.vercel.app)
 - **Monad Contract Address:** [`0x892a23381A17f223a4d9693B980C6563f82c1014`](https://testnet.monadvision.com/address/0x892a23381A17f223a4d9693B980C6563f82c1014)
 - **Monad Network:** Monad Testnet (Chain ID: `10143`)
 - **Block Explorer:** [MonadVision](https://testnet.monadvision.com) / [MonadScan](https://testnet.monadscan.com)
