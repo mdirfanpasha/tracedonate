@@ -154,11 +154,11 @@ export function VerifyExpenseModal({
               </div>
 
               {evidence?.imageData || evidence?.fileUrl ? (
-                <div className="relative h-48 rounded-lg overflow-hidden border border-slate-200 bg-white">
+                <div className="relative h-60 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center p-2">
                   <img
                     src={evidence.imageData || evidence.fileUrl}
                     alt="Receipt Evidence"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain drop-shadow-sm"
                   />
                   <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-slate-900/80 text-white text-[10px] font-mono backdrop-blur-sm">
                     {evidence.supplierName || "Verified Supplier"}

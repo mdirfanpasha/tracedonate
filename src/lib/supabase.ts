@@ -22,53 +22,53 @@ export const supabase: SupabaseClient | null =
     ? createClient(supabaseUrl, supabaseAnonKey)
     : null;
 
-const LOCAL_EVIDENCE_KEY = "tracedonate_offchain_evidence";
+const LOCAL_EVIDENCE_KEY = "tracedonate_offchain_evidence_v2";
 
-// Authentic audited invoice & payment receipt document images
+// Authentic, verified itemized supplier invoice receipts
 const DEFAULT_RECEIPTS: Record<number, OffChainEvidence> = {
   1: {
     id: "ev-1",
     expenseId: 1,
-    fileName: "Emergency_Grain_Rations_Invoice_INV-8492.jpg",
-    fileUrl: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1000&q=80",
+    fileName: "Emergency_Grain_Rations_Invoice_INV-8492.svg",
+    fileUrl: "/receipts/receipt_food.svg",
     invoiceNumber: "INV-8492",
     supplierName: "Apex Humanitarian Food Supplies Ltd.",
     notes: "5,000 grain packages and high-calorie nutritional paste for flood-displaced families.",
     uploadedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    imageData: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1000&q=80",
+    imageData: "/receipts/receipt_food.svg",
   },
   2: {
     id: "ev-2",
     expenseId: 2,
-    fileName: "Medical_Clinic_Supply_Invoice_INV-9104.jpg",
-    fileUrl: "https://images.unsplash.com/photo-1554224154-26032ffc0d07?auto=format&fit=crop&w=1000&q=80",
+    fileName: "Medical_Clinic_Supply_Invoice_INV-9104.svg",
+    fileUrl: "/receipts/receipt_medical.svg",
     invoiceNumber: "INV-9104",
     supplierName: "Global BioMed Logistics Vendor",
     notes: "200 First-responder trauma kits, sterile bandages, and waterborne illness antibiotic courses.",
     uploadedAt: new Date(Date.now() - 86400000).toISOString(),
-    imageData: "https://images.unsplash.com/photo-1554224154-26032ffc0d07?auto=format&fit=crop&w=1000&q=80",
+    imageData: "/receipts/receipt_medical.svg",
   },
   3: {
     id: "ev-3",
     expenseId: 3,
-    fileName: "Rescue_Boat_Diesel_Fuel_Receipt_INV-3201.jpg",
-    fileUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1000&q=80",
+    fileName: "Rescue_Boat_Diesel_Fuel_Receipt_INV-3201.svg",
+    fileUrl: "/receipts/receipt_transport.svg",
     invoiceNumber: "INV-3201",
     supplierName: "Riverine Rescue Boat Fleet",
     notes: "4 Heavy diesel boats deployed for 48-hour rescue and transport operations across 3 inundated sectors.",
     uploadedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-    imageData: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1000&q=80",
+    imageData: "/receipts/receipt_transport.svg",
   },
   4: {
     id: "ev-4",
     expenseId: 4,
-    fileName: "Solar_Pumps_Inverters_Invoice_INV-1092.jpg",
-    fileUrl: "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1000&q=80",
+    fileName: "Solar_Pumps_Inverters_Invoice_INV-1092.svg",
+    fileUrl: "/receipts/receipt_equipment.svg",
     invoiceNumber: "INV-1092",
     supplierName: "SunPure Water Filtration Co.",
     notes: "4 High-capacity sub-surface solar submersible pumps and ceramic reverse-osmosis filtration units.",
     uploadedAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-    imageData: "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1000&q=80",
+    imageData: "/receipts/receipt_equipment.svg",
   },
 };
 

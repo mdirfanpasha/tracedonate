@@ -193,11 +193,11 @@ export function MoneyFlowGraph({ campaign, onSelectExpense }: MoneyFlowGraphProp
               </div>
 
               {selectedEvidence?.imageData || selectedEvidence?.fileUrl ? (
-                <div className="relative h-52 rounded-lg overflow-hidden border border-slate-200 bg-white shadow-inner">
+                <div className="relative h-64 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shadow-inner flex items-center justify-center p-2">
                   <img
                     src={selectedEvidence.imageData || selectedEvidence.fileUrl}
                     alt="Receipt Evidence Proof"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain drop-shadow-sm"
                   />
                   <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-slate-900/80 text-white text-[10px] font-mono backdrop-blur-sm">
                     {selectedEvidence.supplierName || "Verified Supplier"}
